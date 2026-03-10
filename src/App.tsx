@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useSoundsStore } from './hooks/useSounds'
 import { SoundCard } from './components/SoundCard'
+import { GroupCard } from './components/GroupCard'
+import { GroupModal } from './components/GroupModal'
 import { HotkeyModal } from './components/HotkeyModal'
 import { EmptyState } from './components/EmptyState'
+import { SoundGroup } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Info, CheckCircle2
+  Volume2, ChevronDown, Info, CheckCircle2, Plus, Layers
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -54,14 +57,12 @@ function DevicePicker({ devices, selectedId, onSelect }: DevicePickerProps) {
       {open && (
         <div className="device-menu">
           <div className="device-menu-header">Saída de áudio</div>
-
           <button
             className={`device-menu-item ${!selectedId ? 'active' : ''}`}
             onClick={() => { onSelect(null); setOpen(false) }}
           >
             Padrão do sistema
           </button>
-
           {devices.map(d => (
             <button
               key={d.deviceId}
@@ -72,9 +73,8 @@ function DevicePicker({ devices, selectedId, onSelect }: DevicePickerProps) {
               {d.label}
             </button>
           ))}
-
           <div className="device-menu-hint">
-            Para que outros ouçam na call: selecione <em>CABLE Input</em> aqui e <em>CABLE Output</em> como mic no Discord/jogo.
+            Para que outros ouçam na call: selecione <em>CABLE Input</em> aqui e <em>CABLE Output</em> como mic.
           </div>
         </div>
       )}
@@ -84,34 +84,35 @@ function DevicePicker({ devices, selectedId, onSelect }: DevicePickerProps) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-export default function App() {
-  const { sounds, loaded, load, addSounds, removeSound, setHotkey } = useSoundsStore()
+type Tab = 'sounds' | 'groups'
 
+export default function App() {
+  const { sounds, groups, loaded, load, addSounds, removeSound, setHotkey,
+    addGroup, removeGroup, updateGroup } = useSoundsStore()
+
+  const [tab, setTab] = useState<Tab>('sounds')
   const [modalSoundId, setModalSoundId] = useState<string | null>(null)
+  const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showStereoGuide, setShowStereoGuide] = useState(false)
   const [outputDeviceId, setOutputDeviceId] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<AudioDevice[]>([])
 
-  // Shared AudioContext routed to the selected output device
   const stopCurrentRef = useRef<(() => void) | null>(null)
 
   useEffect(() => { load() }, [load])
 
-  // Enumerate output devices only
   useEffect(() => {
     async function loadDevices() {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => {})
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => { })
         const all = await navigator.mediaDevices.enumerateDevices()
         setOutputs(
-          all
-            .filter(d => d.kind === 'audiooutput')
-            .map(d => ({
-              deviceId: d.deviceId,
-              label: d.label || `Dispositivo (${d.deviceId.slice(0, 8)}…)`,
-              isStereoMix: isStereoMixDevice(d.label),
-            }))
+          all.filter(d => d.kind === 'audiooutput').map(d => ({
+            deviceId: d.deviceId,
+            label: d.label || `Dispositivo (${d.deviceId.slice(0, 8)}…)`,
+            isStereoMix: isStereoMixDevice(d.label),
+          }))
         )
       } catch { /* permissions denied */ }
     }
@@ -120,8 +121,7 @@ export default function App() {
     return () => navigator.mediaDevices.removeEventListener('devicechange', loadDevices)
   }, [])
 
-  // ── Play sound via HTMLAudioElement + setSinkId ──────────────────────────────
-  // HTMLAudioElement.setSinkId has better Electron support than AudioContext.setSinkId
+  // ── Centralized audio playback ─────────────────────────────────────────────
   const playSound = useCallback(async (id: string) => {
     const sound = useSoundsStore.getState().sounds.find(s => s.id === id)
     if (!sound) return
@@ -131,25 +131,15 @@ export default function App() {
     setPlayingId(null)
 
     try {
-      const url = toFileUrl(sound.filePath)
-      const audio = new Audio(url)
-
-      // Route to selected output device if one is chosen
+      const audio = new Audio(toFileUrl(sound.filePath))
       if (outputDeviceId) {
         const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
-        if (setSink) {
-          await setSink.call(audio, outputDeviceId)
-          console.log('[Soundboard] Routing to device:', outputDeviceId)
-        } else {
-          console.warn('[Soundboard] setSinkId not available in this Electron version')
-        }
+        if (setSink) await setSink.call(audio, outputDeviceId).catch(() => { })
       }
-
       let done = false
       audio.addEventListener('ended', () => {
         if (!done) { done = true; setPlayingId(null); stopCurrentRef.current = null }
       })
-
       setPlayingId(id)
       await audio.play()
       stopCurrentRef.current = () => {
@@ -161,12 +151,22 @@ export default function App() {
     }
   }, [outputDeviceId])
 
-
   const stopSound = useCallback(() => {
     stopCurrentRef.current?.()
     stopCurrentRef.current = null
     setPlayingId(null)
   }, [])
+
+  // ── Play a random sound from a group ──────────────────────────────────────
+  const playGroupRandom = useCallback((groupId: string) => {
+    const { sounds: s, groups: g } = useSoundsStore.getState()
+    const group = g.find(gr => gr.id === groupId)
+    if (!group || group.soundIds.length === 0) return
+    const pool = s.filter(sound => group.soundIds.includes(sound.id))
+    if (pool.length === 0) return
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    playSound(pick.id)
+  }, [playSound])
 
   useEffect(() => {
     const unsub = window.electronAPI.onPlaySound((id) => playSound(id))
@@ -183,8 +183,16 @@ export default function App() {
     setModalSoundId(null)
   }
 
+  const handleCreateGroup = async () => {
+    const group = await addGroup('Novo Grupo')
+    setEditGroupId(group.id)
+    setTab('groups')
+  }
+
   const modalSound = sounds.find(s => s.id === modalSoundId) ?? null
+  const editGroup = groups.find(g => g.id === editGroupId) ?? null
   const hasStereoMix = outputs.some(d => d.isStereoMix)
+  const hasContent = sounds.length > 0 || groups.length > 0
 
   return (
     <>
@@ -201,41 +209,37 @@ export default function App() {
         </div>
       </div>
 
-      {/* Stereo Mix / VB-CABLE guide */}
+      {/* Stereo Mix guide */}
       {showStereoGuide && (
         <div className="stereo-guide" onClick={() => setShowStereoGuide(false)}>
           <div className="stereo-guide-box" onClick={e => e.stopPropagation()}>
             <button className="stereo-guide-close" onClick={() => setShowStereoGuide(false)}><X size={14} /></button>
             <h3>Usar como microfone — em qualquer app</h3>
             <p className="guide-intro">
-              O soundboard reproduz sons em um dispositivo de saída. Para que outros em calls ou jogos ouçam, você precisa que esse dispositivo apareça como <strong>microfone</strong>. Duas opções:
+              O soundboard reproduz sons em um dispositivo de saída. Para que outros ouçam, você precisa que esse dispositivo apareça como <strong>microfone</strong>.
             </p>
-
             <div className="guide-option">
-              <div className="guide-option-title">Opção 1 — Stereo Mix (Windows nativo, grátis)</div>
+              <div className="guide-option-title">Opção 1 — Stereo Mix (Windows nativo)</div>
               <ol className="guide-steps">
-                <li><strong>Win + R</strong> → digitar <em>mmsys.cpl</em> → Enter</li>
-                <li>Aba <strong>Gravação</strong> → botão direito em área vazia → <em>"Mostrar dispositivos desativados"</em></li>
+                <li><strong>Win + R</strong> → <em>mmsys.cpl</em> → aba <strong>Gravação</strong></li>
+                <li>Botão direito em área vazia → <em>"Mostrar dispositivos desativados"</em></li>
                 <li>Botão direito em <strong>Stereo Mix</strong> → <em>Habilitar</em> → <em>"Definir como padrão"</em></li>
-                <li>No Discord/jogo → microfone = <strong>Stereo Mix</strong></li>
-                <li>No Soundboard → Saída de áudio = <strong>Padrão do sistema</strong></li>
+                <li>No jogo/Discord → mic = <strong>Stereo Mix</strong>, Soundboard → saída padrão</li>
               </ol>
             </div>
-
             <div className="guide-option">
-              <div className="guide-option-title">Opção 2 — VB-CABLE (mais confiável, especialmente USB)</div>
+              <div className="guide-option-title">Opção 2 — VB-CABLE (recomendado para USB)</div>
               <ol className="guide-steps">
-                <li>Instalar <strong>VB-CABLE</strong> em <em>vb-audio.com/Cable</em> (gratuito, 1 min)</li>
-                <li>No Soundboard → Saída de áudio = <strong>CABLE Input (VB-Audio)</strong></li>
-                <li>No Discord/jogo → microfone = <strong>CABLE Output (VB-Audio)</strong></li>
-                <li>Para ouvir sua própria voz também: abra as Propriedades do seu mic no Windows → aba <em>Ouvir</em> → ativar <em>"Ouvir este dispositivo"</em> pela saída CABLE</li>
+                <li>Instalar <strong>VB-CABLE</strong> em <em>vb-audio.com/Cable</em> (gratuito)</li>
+                <li>Soundboard → Saída = <strong>CABLE Input</strong></li>
+                <li>No jogo/Discord → mic = <strong>CABLE Output</strong></li>
+                <li>Opcional: HyperX → mmsys.cpl → Properties → Ouvir → reproduzir pelo CABLE Input</li>
               </ol>
             </div>
-
             <div className="guide-note">
               {hasStereoMix
-                ? <><CheckCircle2 size={14} className="guide-check" /> Stereo Mix detectado! Defina-o como padrão de gravação e selecione-o no Discord.</>
-                : <><Info size={14} /> Stereo Mix não encontrado (comum com headsets USB). Use a Opção 2 — VB-CABLE.</>
+                ? <><CheckCircle2 size={14} className="guide-check" /> Stereo Mix detectado!</>
+                : <><Info size={14} /> Stereo Mix não encontrado. Use VB-CABLE para headsets USB.</>
               }
             </div>
           </div>
@@ -243,39 +247,57 @@ export default function App() {
       )}
 
       {/* Main */}
-      <main className="main" onClick={() => {}}>
-        {loaded && sounds.length > 0 && (
+      <main className="main">
+        {loaded && hasContent && (
           <div className="toolbar">
-            <h1 className="toolbar-heading">
-              Meus Sons <span className="count">{sounds.length}</span>
-            </h1>
+            <div className="tabs">
+              <button
+                className={`tab-btn ${tab === 'sounds' ? 'active' : ''}`}
+                onClick={() => setTab('sounds')}
+              >
+                <Music2 size={13} /> Sons
+                {sounds.length > 0 && <span className="count">{sounds.length}</span>}
+              </button>
+              <button
+                className={`tab-btn ${tab === 'groups' ? 'active' : ''}`}
+                onClick={() => setTab('groups')}
+              >
+                <Layers size={13} /> Grupos
+                {groups.length > 0 && <span className="count">{groups.length}</span>}
+              </button>
+            </div>
+
             <div className="toolbar-right">
               <button
                 className={`stereo-mix-btn ${hasStereoMix ? 'found' : ''}`}
                 onClick={() => setShowStereoGuide(true)}
-                title="Como usar como microfone"
               >
                 {hasStereoMix ? <CheckCircle2 size={13} /> : <Info size={13} />}
                 Como usar como mic
               </button>
 
-              <DevicePicker
-                devices={outputs}
-                selectedId={outputDeviceId}
-                onSelect={setOutputDeviceId}
-              />
+              <DevicePicker devices={outputs} selectedId={outputDeviceId} onSelect={setOutputDeviceId} />
 
-              <button className="btn-primary" onClick={handleImport}>
-                <FolderOpen size={15} /> Importar Áudios
-              </button>
+              {tab === 'sounds' && (
+                <button className="btn-primary" onClick={handleImport}>
+                  <FolderOpen size={15} /> Importar Áudios
+                </button>
+              )}
+              {tab === 'groups' && (
+                <button className="btn-primary" onClick={handleCreateGroup}>
+                  <Plus size={15} /> Novo Grupo
+                </button>
+              )}
             </div>
           </div>
         )}
 
         {!loaded && <div className="loading"><div className="spinner" /></div>}
-        {loaded && sounds.length === 0 && <EmptyState onImport={handleImport} />}
 
-        {loaded && sounds.length > 0 && (
+        {loaded && !hasContent && <EmptyState onImport={handleImport} />}
+
+        {/* Sounds tab */}
+        {loaded && tab === 'sounds' && sounds.length > 0 && (
           <div className="sound-grid">
             {sounds.map(sound => (
               <SoundCard
@@ -290,14 +312,63 @@ export default function App() {
             ))}
           </div>
         )}
+
+        {loaded && tab === 'sounds' && sounds.length === 0 && hasContent && (
+          <div className="tab-empty">
+            <p>Nenhum som importado.</p>
+            <button className="btn-primary" onClick={handleImport}>
+              <FolderOpen size={15} /> Importar Áudios
+            </button>
+          </div>
+        )}
+
+        {/* Groups tab */}
+        {loaded && tab === 'groups' && groups.length > 0 && (
+          <div className="sound-grid">
+            {groups.map(group => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                sounds={sounds}
+                onPlayRandom={playGroupRandom}
+                onEdit={id => setEditGroupId(id)}
+                onRemove={removeGroup}
+                isPlaying={group.soundIds.includes(playingId ?? '')}
+              />
+            ))}
+          </div>
+        )}
+
+        {loaded && tab === 'groups' && groups.length === 0 && hasContent && (
+          <div className="tab-empty">
+            <p>Nenhum grupo criado ainda.</p>
+            <button className="btn-primary" onClick={handleCreateGroup}>
+              <Plus size={15} /> Novo Grupo
+            </button>
+          </div>
+        )}
       </main>
 
+      {/* Hotkey modal for individual sounds */}
       {modalSoundId && modalSound && (
         <HotkeyModal
           currentHotkey={modalSound.hotkey}
           soundName={modalSound.name}
           onConfirm={handleHotkeyConfirm}
           onClose={() => setModalSoundId(null)}
+        />
+      )}
+
+      {/* Group edit modal */}
+      {editGroupId && editGroup && (
+        <GroupModal
+          group={editGroup}
+          allSounds={sounds}
+          onSave={async (updated: SoundGroup) => {
+            await updateGroup(updated)
+            setEditGroupId(null)
+          }}
+          onClose={() => setEditGroupId(null)}
         />
       )}
     </>

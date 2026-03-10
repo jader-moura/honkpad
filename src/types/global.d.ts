@@ -7,11 +7,20 @@ export interface SoundEntry {
   hotkey: string | null
 }
 
+export interface SoundGroup {
+  id: string
+  name: string
+  hotkey: string | null
+  soundIds: string[]  // references SoundEntry.id
+}
+
 declare global {
   interface Window {
     electronAPI: {
       getSounds: () => Promise<SoundEntry[]>
       saveSounds: (sounds: SoundEntry[]) => Promise<void>
+      getGroups: () => Promise<SoundGroup[]>
+      saveGroups: (groups: SoundGroup[]) => Promise<void>
       openFileDialog: () => Promise<string[]>
       onPlaySound: (cb: (id: string) => void) => () => void
       minimizeWindow: () => void

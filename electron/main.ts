@@ -9,32 +9,51 @@ interface SoundEntry {
   hotkey: string | null
 }
 
-interface StoreSchema {
-  sounds: SoundEntry[]
+interface SoundGroup {
+  id: string
+  name: string
+  hotkey: string | null
+  soundIds: string[]
 }
 
-const store = new Store<StoreSchema>({ defaults: { sounds: [] } })
+interface StoreSchema {
+  sounds: SoundEntry[]
+  groups: SoundGroup[]
+}
+
+const store = new Store<StoreSchema>({ defaults: { sounds: [], groups: [] } })
 
 let mainWindow: BrowserWindow | null = null
 
-// Map hotkey string -> sound id for quick lookup
-const hotkeyMap = new Map<string, string>()
-
 function registerAllHotkeys() {
   globalShortcut.unregisterAll()
-  hotkeyMap.clear()
 
   const sounds: SoundEntry[] = store.get('sounds')
+  const groups: SoundGroup[] = store.get('groups')
+
+  // Individual sound hotkeys
   for (const sound of sounds) {
     if (sound.hotkey) {
       try {
         globalShortcut.register(sound.hotkey, () => {
           mainWindow?.webContents.send('play-sound', sound.id)
         })
-        hotkeyMap.set(sound.hotkey, sound.id)
-      } catch {
-        // ignore invalid accelerators
-      }
+      } catch { /* ignore invalid accelerators */ }
+    }
+  }
+
+  // Group hotkeys — pick a random sound from the group
+  for (const group of groups) {
+    if (group.hotkey && group.soundIds.length > 0) {
+      try {
+        globalShortcut.register(group.hotkey, () => {
+          // Resolve soundIds to actual sounds
+          const groupSounds = sounds.filter(s => group.soundIds.includes(s.id))
+          if (groupSounds.length === 0) return
+          const random = groupSounds[Math.floor(Math.random() * groupSounds.length)]
+          mainWindow?.webContents.send('play-sound', random.id)
+        })
+      } catch { /* ignore invalid accelerators */ }
     }
   }
 }
@@ -54,7 +73,6 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      // Allow local file access for audio playback
       webSecurity: false,
     },
   })
@@ -66,17 +84,20 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  mainWindow.on('closed', () => { mainWindow = null })
 }
 
 // ── IPC Handlers ──────────────────────────────────────────────────────────────
 
 ipcMain.handle('get-sounds', () => store.get('sounds'))
-
 ipcMain.handle('save-sounds', (_, sounds: SoundEntry[]) => {
   store.set('sounds', sounds)
+  registerAllHotkeys()
+})
+
+ipcMain.handle('get-groups', () => store.get('groups'))
+ipcMain.handle('save-groups', (_, groups: SoundGroup[]) => {
+  store.set('groups', groups)
   registerAllHotkeys()
 })
 
@@ -92,11 +113,8 @@ ipcMain.handle('open-file-dialog', async () => {
 // Window controls
 ipcMain.on('window-minimize', () => mainWindow?.minimize())
 ipcMain.on('window-maximize', () => {
-  if (mainWindow?.isMaximized()) {
-    mainWindow.unmaximize()
-  } else {
-    mainWindow?.maximize()
-  }
+  if (mainWindow?.isMaximized()) mainWindow.unmaximize()
+  else mainWindow?.maximize()
 })
 ipcMain.on('window-close', () => mainWindow?.close())
 
