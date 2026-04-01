@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { X, Plus, Trash2, Keyboard, Play, Square } from 'lucide-react'
+import { X, Plus, Trash2, Keyboard, Play, Square, Search } from 'lucide-react'
 import { SoundEntry, SoundGroup } from '../types/global'
 
 function toFileUrl(p: string): string {
@@ -21,6 +21,7 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
     const [soundIds, setSoundIds] = useState<string[]>(group.soundIds)
     const [hotkey, setHotkey] = useState<string | null>(group.hotkey)
     const [step, setStep] = useState<ModalStep>('edit')
+    const [availableSearch, setAvailableSearch] = useState('')
 
     // Hotkey capture state
     const [listening, setListening] = useState(false)
@@ -29,6 +30,9 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
 
     // Sounds not yet in group
     const available = allSounds.filter(s => !soundIds.includes(s.id))
+    const filteredAvailable = available.filter(s =>
+        s.name.toLowerCase().includes(availableSearch.toLowerCase())
+    )
     const inGroup = allSounds.filter(s => soundIds.includes(s.id))
 
     const handleAddSound = (id: string) => setSoundIds(prev => [...prev, id])
@@ -174,22 +178,34 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
                         {available.length > 0 && (
                             <div className="group-modal-field">
                                 <label className="group-modal-label">Adicionar sons</label>
+                                <div className="search-box">
+                                    <Search size={13} className="search-icon" />
+                                    <input
+                                        className="search-input"
+                                        placeholder="Buscar sons…"
+                                        value={availableSearch}
+                                        onChange={e => setAvailableSearch(e.target.value)}
+                                    />
+                                </div>
                                 <div className="group-sound-list available">
-                                    {available.map(s => (
-                                        <div key={s.id} className="group-sound-row">
-                                            <button
-                                                className={`preview-btn ${previewingId === s.id ? 'previewing' : ''}`}
-                                                onClick={() => togglePreview(s)}
-                                                title={previewingId === s.id ? 'Parar' : 'Ouvir'}
-                                            >
-                                                {previewingId === s.id ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
-                                            </button>
-                                            <span className="group-sound-name">{s.name}</span>
-                                            <button className="add-btn" onClick={() => handleAddSound(s.id)} title="Adicionar ao grupo">
-                                                <Plus size={13} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                    {filteredAvailable.length > 0
+                                        ? filteredAvailable.map(s => (
+                                            <div key={s.id} className="group-sound-row">
+                                                <button
+                                                    className={`preview-btn ${previewingId === s.id ? 'previewing' : ''}`}
+                                                    onClick={() => togglePreview(s)}
+                                                    title={previewingId === s.id ? 'Parar' : 'Ouvir'}
+                                                >
+                                                    {previewingId === s.id ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
+                                                </button>
+                                                <span className="group-sound-name">{s.name}</span>
+                                                <button className="add-btn" onClick={() => handleAddSound(s.id)} title="Adicionar ao grupo">
+                                                    <Plus size={13} />
+                                                </button>
+                                            </div>
+                                        ))
+                                        : <p className="group-empty-hint">Nenhum som encontrado.</p>
+                                    }
                                 </div>
                             </div>
                         )}

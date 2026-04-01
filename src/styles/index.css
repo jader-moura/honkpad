@@ -159,6 +159,50 @@ body,
   gap: 10px;
 }
 
+/* ── Search Box ──────────────────────────────────────────────── */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 180px;
+  padding: 6px 10px 6px 28px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--transition), width var(--transition);
+}
+
+.search-input:focus {
+  border-color: var(--violet);
+  width: 220px;
+}
+
+.search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.sounds-search {
+  flex-shrink: 0;
+}
+
+.sounds-search .search-input,
+.sounds-search .search-input:focus {
+  width: 100%;
+}
+
 /* ── Device Selector ─────────────────────────────────────────── */
 .device-selector {
   position: relative;

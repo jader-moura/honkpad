@@ -11,7 +11,7 @@ import { DebugPanel } from './components/DebugPanel'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings
+  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings, Search
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -176,6 +176,7 @@ export default function App() {
     addGroup, removeGroup, updateGroup } = useSoundsStore()
 
   const [tab, setTab] = useState<Tab>('sounds')
+  const [soundSearch, setSoundSearch] = useState('')
   const [modalSoundId, setModalSoundId] = useState<string | null>(null)
   const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -570,20 +571,40 @@ export default function App() {
 
         {/* Sounds tab */}
         {loaded && tab === 'sounds' && sounds.length > 0 && (
-          <div className="sound-grid">
-            {sounds.map(sound => (
-              <SoundCard
-                key={sound.id}
-                sound={sound}
-                onPlay={playSound}
-                onStop={stopSound}
-                onRemove={removeSound}
-                onHotkeyClick={id => setModalSoundId(id)}
-                isPlaying={playingId === sound.id}
-              />
-            ))}
+          <div className="search-box sounds-search">
+            <Search size={13} className="search-icon" />
+            <input
+              className="search-input"
+              placeholder="Buscar sons…"
+              value={soundSearch}
+              onChange={e => setSoundSearch(e.target.value)}
+            />
           </div>
         )}
+        {loaded && tab === 'sounds' && sounds.length > 0 && (() => {
+          const filtered = sounds.filter(s => s.name.toLowerCase().includes(soundSearch.toLowerCase()))
+          return filtered.length > 0
+            ? (
+              <div className="sound-grid">
+                {filtered.map(sound => (
+                  <SoundCard
+                    key={sound.id}
+                    sound={sound}
+                    onPlay={playSound}
+                    onStop={stopSound}
+                    onRemove={removeSound}
+                    onHotkeyClick={id => setModalSoundId(id)}
+                    isPlaying={playingId === sound.id}
+                  />
+                ))}
+              </div>
+            )
+            : (
+              <div className="tab-empty">
+                <p>Nenhum som encontrado para "<strong>{soundSearch}</strong>".</p>
+              </div>
+            )
+        })()}
 
         {loaded && tab === 'sounds' && sounds.length === 0 && hasContent && (
           <div className="tab-empty">
