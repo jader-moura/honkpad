@@ -60,6 +60,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVBCableFlag: (): Promise<boolean> => ipcRenderer.invoke('get-vbcable-flag'),
   setVBCableFlag: (checked: boolean): Promise<void> => ipcRenderer.invoke('set-vbcable-flag', checked),
 
+  // ── Tray ──
+  updateTrayStatus: (isPlaying: boolean): void => ipcRenderer.send('tray-update-status', isPlaying),
+  onStopAllSounds: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('stop-all-sounds', listener)
+    return () => ipcRenderer.removeListener('stop-all-sounds', listener)
+  },
+
   // ── MyInstants ──
   searchMyInstants: (query: string): Promise<MyInstantResult[]> => ipcRenderer.invoke('search-myinstants', query),
   downloadMyInstantSound: (mp3Url: string, name: string): Promise<string> => ipcRenderer.invoke('download-myinstant-sound', mp3Url, name),

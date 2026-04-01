@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync } from 'fs'
 import { execSync, spawn } from 'child_process'
@@ -52,6 +52,73 @@ const store = new Store<StoreSchema>({
 })
 
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+let isQuitting = false
+
+// ── Tray ───────────────────────────────────────────────────────────────────────
+
+function getTrayIcon(): Electron.NativeImage {
+  const candidates = [
+    join(app.getAppPath(), 'public', 'icon.ico'),
+    join(app.getAppPath(), 'public', 'icon.png'),
+    join(__dirname, '..', 'public', 'icon.ico'),
+    join(__dirname, '..', 'public', 'icon.png'),
+  ]
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      const img = nativeImage.createFromPath(p)
+      return img.resize({ width: 16, height: 16 })
+    }
+  }
+  // Fallback: programmatic 16×16 violet square
+  const size = 16
+  const buf = Buffer.alloc(size * size * 4)
+  for (let i = 0; i < size * size; i++) {
+    buf[i * 4 + 0] = 139  // R
+    buf[i * 4 + 1] = 92   // G
+    buf[i * 4 + 2] = 246  // B
+    buf[i * 4 + 3] = 255  // A
+  }
+  return nativeImage.createFromBitmap(buf, { width: size, height: size })
+}
+
+function showWindow() {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function buildTrayMenu() {
+  return Menu.buildFromTemplate([
+    {
+      label: 'Abrir',
+      click: showWindow,
+    },
+    {
+      label: 'Parar todos os sons',
+      click: () => {
+        mainWindow?.webContents.send('stop-all-sounds')
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Sair',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+}
+
+function createTray() {
+  tray = new Tray(getTrayIcon())
+  tray.setToolTip('Soundboard — pronto')
+  tray.setContextMenu(buildTrayMenu())
+  tray.on('double-click', showWindow)
+  log.info('[Tray] System tray icon created')
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -273,6 +340,15 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
 
+  // Intercept close → minimize to tray instead of quitting
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault()
+      mainWindow?.hide()
+      log.info('[Tray] Window hidden to tray')
+    }
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -296,7 +372,9 @@ ipcMain.handle('save-groups', (_, groups: SoundGroup[]) => {
 
 // File dialog
 ipcMain.handle('open-file-dialog', async () => {
-  const result = await dialog.showOpenDialog(mainWindow!, {
+  // show window first so the dialog has a proper parent
+  showWindow()
+  const result = await dialog.showOpenDialog({
     title: 'Selecionar arquivos de áudio',
     properties: ['openFile', 'multiSelections'],
     filters: [
@@ -456,25 +534,39 @@ ipcMain.on('window-maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize()
   else mainWindow?.maximize()
 })
-ipcMain.on('window-close', () => mainWindow?.close())
+ipcMain.on('window-close', () => mainWindow?.hide())
+
+// ── Tray IPC ───────────────────────────────────────────────────────────────────
+
+ipcMain.on('tray-update-status', (_, isPlaying: boolean) => {
+  tray?.setToolTip(isPlaying ? 'Soundboard — 1 som tocando' : 'Soundboard — pronto')
+})
 
 // ── App Lifecycle ──────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
   log.info('[Main] App ready')
   createWindow()
+  createTray()
   registerAllHotkeys()
 })
 
+// Window is hidden to tray, not closed — prevent default quit behaviour
 app.on('window-all-closed', () => {
-  globalShortcut.unregisterAll()
-  if (process.platform !== 'darwin') app.quit()
+  // Do nothing: tray keeps the app alive
 })
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  else showWindow()
+})
+
+app.on('before-quit', () => {
+  isQuitting = true
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  tray?.destroy()
+  tray = null
 })

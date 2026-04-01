@@ -465,6 +465,17 @@ export default function App() {
     return () => { if (unsub) unsub() }
   }, [playSound])
 
+  // Sync playing state to tray tooltip
+  useEffect(() => {
+    window.electronAPI.updateTrayStatus(playingId !== null)
+  }, [playingId])
+
+  // Stop all sounds from tray menu
+  useEffect(() => {
+    const unsub = window.electronAPI.onStopAllSounds(() => stopSound())
+    return () => { if (unsub) unsub() }
+  }, [stopSound])
+
   const handleImport = async () => {
     const paths = await window.electronAPI.openFileDialog()
     if (paths.length > 0) addSounds(paths)

@@ -56,6 +56,10 @@ declare global {
       getVBCableFlag: () => Promise<boolean>
       setVBCableFlag: (checked: boolean) => Promise<void>
 
+      // Tray
+      updateTrayStatus: (isPlaying: boolean) => void
+      onStopAllSounds: (cb: () => void) => () => void
+
       // MyInstants
       searchMyInstants: (query: string) => Promise<MyInstantResult[]>
       downloadMyInstantSound: (mp3Url: string, name: string) => Promise<string>
