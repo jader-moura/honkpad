@@ -27,6 +27,12 @@ export interface ConflictInfo {
   details: string[]
 }
 
+export interface MyInstantResult {
+  name: string
+  mp3Url: string
+  slug: string
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // ── Sounds CRUD ──
   getSounds: (): Promise<SoundEntry[]> => ipcRenderer.invoke('get-sounds'),
@@ -53,6 +59,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSoundSettings: (): Promise<void> => ipcRenderer.invoke('open-sound-settings'),
   getVBCableFlag: (): Promise<boolean> => ipcRenderer.invoke('get-vbcable-flag'),
   setVBCableFlag: (checked: boolean): Promise<void> => ipcRenderer.invoke('set-vbcable-flag', checked),
+
+  // ── MyInstants ──
+  searchMyInstants: (query: string): Promise<MyInstantResult[]> => ipcRenderer.invoke('search-myinstants', query),
+  downloadMyInstantSound: (mp3Url: string, name: string): Promise<string> => ipcRenderer.invoke('download-myinstant-sound', mp3Url, name),
 
   // ── Window controls ──
   minimizeWindow: () => ipcRenderer.send('window-minimize'),

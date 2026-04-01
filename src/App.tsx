@@ -8,6 +8,7 @@ import { EmptyState } from './components/EmptyState'
 import { VBCableSetup } from './components/VBCableSetup'
 import { ConflictWarning } from './components/ConflictWarning'
 import { DebugPanel } from './components/DebugPanel'
+import { ImportModal } from './components/ImportModal'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
@@ -177,6 +178,7 @@ export default function App() {
 
   const [tab, setTab] = useState<Tab>('sounds')
   const [soundSearch, setSoundSearch] = useState('')
+  const [showImportModal, setShowImportModal] = useState(false)
   const [modalSoundId, setModalSoundId] = useState<string | null>(null)
   const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -552,7 +554,7 @@ export default function App() {
 
             <div className="toolbar-right">
               {tab === 'sounds' && (
-                <button className="btn-primary" onClick={handleImport}>
+                <button className="btn-primary" onClick={() => setShowImportModal(true)}>
                   <FolderOpen size={15} /> Importar Áudios
                 </button>
               )}
@@ -567,7 +569,7 @@ export default function App() {
 
         {!loaded && <div className="loading"><div className="spinner" /></div>}
 
-        {loaded && !hasContent && tab !== 'settings' && <EmptyState onImport={handleImport} />}
+        {loaded && !hasContent && tab !== 'settings' && <EmptyState onImport={() => setShowImportModal(true)} />}
 
         {/* Sounds tab */}
         {loaded && tab === 'sounds' && sounds.length > 0 && (
@@ -609,7 +611,7 @@ export default function App() {
         {loaded && tab === 'sounds' && sounds.length === 0 && hasContent && (
           <div className="tab-empty">
             <p>Nenhum som importado.</p>
-            <button className="btn-primary" onClick={handleImport}>
+            <button className="btn-primary" onClick={() => setShowImportModal(true)}>
               <FolderOpen size={15} /> Importar Áudios
             </button>
           </div>
@@ -733,6 +735,15 @@ export default function App() {
             setEditGroupId(null)
           }}
           onClose={() => setEditGroupId(null)}
+        />
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <ImportModal
+          onFileImport={handleImport}
+          addSounds={addSounds}
+          onClose={() => setShowImportModal(false)}
         />
       )}
 

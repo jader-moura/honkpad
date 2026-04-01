@@ -1167,6 +1167,145 @@ body,
   background: var(--violet-bg);
 }
 
+/* ── Import Modal ────────────────────────────────────────────── */
+.import-modal {
+  width: 500px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.import-tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+.import-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.import-tab:hover { color: var(--text); }
+
+.import-tab.active {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.import-file-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 4px;
+}
+
+.import-file-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.import-myinstants-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.import-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.import-search-row .search-input,
+.import-search-row .search-input:focus {
+  width: 100%;
+}
+
+.import-error {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.import-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.import-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.import-result-row:hover { background: var(--surface2); }
+
+.import-result-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.import-add-btn:hover:not(:disabled) {
+  background: var(--violet-bg);
+  border-color: var(--violet);
+  color: var(--violet-lite);
+}
+
+.import-add-btn.added {
+  background: var(--violet-bg);
+  border-color: var(--violet);
+  color: var(--violet-lite);
+}
+
+.import-add-btn:disabled { cursor: default; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.7s linear infinite; }
+
 /* ── Group Modal ─────────────────────────────────────────────── */
 .group-modal-box {
   width: 520px;

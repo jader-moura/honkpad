@@ -25,6 +25,12 @@ export interface ConflictInfo {
   details: string[]
 }
 
+export interface MyInstantResult {
+  name: string
+  mp3Url: string
+  slug: string
+}
+
 export interface AudioDeviceInfo {
   deviceId: string
   label: string
@@ -49,6 +55,10 @@ declare global {
       openSoundSettings: () => Promise<void>
       getVBCableFlag: () => Promise<boolean>
       setVBCableFlag: (checked: boolean) => Promise<void>
+
+      // MyInstants
+      searchMyInstants: (query: string) => Promise<MyInstantResult[]>
+      downloadMyInstantSound: (mp3Url: string, name: string) => Promise<string>
 
       // Window controls
       minimizeWindow: () => void

@@ -1,7 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell } from 'electron'
 import { join } from 'path'
-import { existsSync, readdirSync, readFileSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync } from 'fs'
 import { execSync, spawn } from 'child_process'
+import https from 'https'
+import http from 'http'
 import Store from 'electron-store'
 import log from 'electron-log'
 
@@ -338,6 +340,113 @@ ipcMain.handle('get-vbcable-flag', (): boolean => {
 ipcMain.handle('set-vbcable-flag', (_, checked: boolean) => {
   store.set('vbcableChecked', checked)
   log.info('[VBCable] Flag set to:', checked)
+})
+
+// ── MyInstants Integration ─────────────────────────────────────────────────────
+
+interface MyInstantResult {
+  name: string
+  mp3Url: string
+  slug: string
+}
+
+function httpGetHtml(url: string, redirectCount = 0): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (redirectCount > 5) { reject(new Error('Too many redirects')); return }
+    const mod = url.startsWith('https') ? https : http
+    const req = mod.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    }, (res) => {
+      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+        const loc = res.headers.location
+        httpGetHtml(loc.startsWith('http') ? loc : `https://www.myinstants.com${loc}`, redirectCount + 1)
+          .then(resolve).catch(reject)
+        return
+      }
+      const chunks: Buffer[] = []
+      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+  })
+}
+
+ipcMain.handle('search-myinstants', async (_, query: string): Promise<MyInstantResult[]> => {
+  const url = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query)}`
+  log.info('[MyInstants] Searching:', url)
+
+  const html = await httpGetHtml(url)
+
+  // Extract slugs + names from instant-link anchors
+  const slugNameRegex = /href="\/en\/instant\/([^"]+)\/"\s+class="instant-link[^"]*">([^<]+)<\/a>/g
+  // Extract MP3 URLs from small-button onclick attributes
+  const mp3Regex = /class="small-button"[^>]+onclick="play\('([^']+\.mp3)'/g
+
+  const slugNames: Array<{ slug: string; name: string }> = []
+  const mp3Urls: string[] = []
+
+  let m: RegExpExecArray | null
+  while ((m = slugNameRegex.exec(html)) !== null) {
+    slugNames.push({ slug: m[1], name: m[2].trim() })
+  }
+  while ((m = mp3Regex.exec(html)) !== null) {
+    mp3Urls.push(m[1])
+  }
+
+  const results: MyInstantResult[] = slugNames
+    .map((sn, i) => ({ name: sn.name, mp3Url: mp3Urls[i] ?? '', slug: sn.slug }))
+    .filter(r => r.mp3Url)
+    .slice(0, 30)
+
+  log.info('[MyInstants] Found', results.length, 'results')
+  return results
+})
+
+ipcMain.handle('download-myinstant-sound', async (_, mp3Url: string, name: string): Promise<string> => {
+  const soundsDir = join(app.getPath('userData'), 'downloaded-sounds')
+  mkdirSync(soundsDir, { recursive: true })
+
+  const safeName = name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim().slice(0, 80) || 'sound'
+  let destPath = join(soundsDir, `${safeName}.mp3`)
+  let counter = 1
+  while (existsSync(destPath)) {
+    destPath = join(soundsDir, `${safeName} (${counter}).mp3`)
+    counter++
+  }
+
+  const fullUrl = mp3Url.startsWith('http') ? mp3Url : `https://www.myinstants.com${mp3Url}`
+  log.info('[MyInstants] Downloading:', fullUrl, '→', destPath)
+
+  await new Promise<void>((resolve, reject) => {
+    const download = (u: string, redirectCount = 0) => {
+      if (redirectCount > 5) { reject(new Error('Too many redirects')); return }
+      const mod = u.startsWith('https') ? https : http
+      const req = mod.get(u, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120' },
+      }, (res) => {
+        if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+          const loc = res.headers.location
+          download(loc.startsWith('http') ? loc : `https://www.myinstants.com${loc}`, redirectCount + 1)
+          return
+        }
+        const file = createWriteStream(destPath)
+        res.pipe(file)
+        file.on('finish', () => { file.close(); resolve() })
+        file.on('error', reject)
+        res.on('error', reject)
+      })
+      req.on('error', reject)
+    }
+    download(fullUrl)
+  })
+
+  log.info('[MyInstants] Saved to:', destPath)
+  return destPath
 })
 
 // ── Window Controls ────────────────────────────────────────────────────────────
