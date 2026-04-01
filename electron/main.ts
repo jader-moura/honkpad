@@ -34,6 +34,7 @@ interface StoreSchema {
   sounds: SoundEntry[]
   groups: SoundGroup[]
   vbcableChecked: boolean
+  stopHotkey: string
 }
 
 interface VBCableStatus {
@@ -48,7 +49,7 @@ interface ConflictInfo {
 }
 
 const store = new Store<StoreSchema>({
-  defaults: { sounds: [], groups: [], vbcableChecked: false },
+  defaults: { sounds: [], groups: [], vbcableChecked: false, stopHotkey: 'Ctrl+Shift+S' },
 })
 
 let mainWindow: BrowserWindow | null = null
@@ -282,6 +283,17 @@ function detectConflicts(): ConflictInfo {
 function registerAllHotkeys() {
   globalShortcut.unregisterAll()
 
+  // Stop-all-sounds global hotkey
+  const stopHotkey = store.get('stopHotkey')
+  if (stopHotkey) {
+    try {
+      globalShortcut.register(stopHotkey, () => {
+        mainWindow?.webContents.send('stop-all-sounds')
+        log.info('[Hotkey] Stop all sounds triggered:', stopHotkey)
+      })
+    } catch { /* ignore invalid accelerator */ }
+  }
+
   const sounds: SoundEntry[] = store.get('sounds')
   const groups: SoundGroup[] = store.get('groups')
 
@@ -418,6 +430,15 @@ ipcMain.handle('get-vbcable-flag', (): boolean => {
 ipcMain.handle('set-vbcable-flag', (_, checked: boolean) => {
   store.set('vbcableChecked', checked)
   log.info('[VBCable] Flag set to:', checked)
+})
+
+// ── Stop Hotkey Settings ───────────────────────────────────────────────────────
+
+ipcMain.handle('get-stop-hotkey', () => store.get('stopHotkey'))
+ipcMain.handle('set-stop-hotkey', (_, hotkey: string) => {
+  store.set('stopHotkey', hotkey)
+  log.info('[Settings] Stop hotkey updated:', hotkey)
+  registerAllHotkeys()
 })
 
 // ── MyInstants Integration ─────────────────────────────────────────────────────

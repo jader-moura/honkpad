@@ -56,6 +56,10 @@ declare global {
       getVBCableFlag: () => Promise<boolean>
       setVBCableFlag: (checked: boolean) => Promise<void>
 
+      // Stop hotkey settings
+      getStopHotkey: () => Promise<string>
+      setStopHotkey: (hotkey: string) => Promise<void>
+
       // Tray
       updateTrayStatus: (isPlaying: boolean) => void
       onStopAllSounds: (cb: () => void) => () => void

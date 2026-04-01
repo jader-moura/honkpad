@@ -60,6 +60,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVBCableFlag: (): Promise<boolean> => ipcRenderer.invoke('get-vbcable-flag'),
   setVBCableFlag: (checked: boolean): Promise<void> => ipcRenderer.invoke('set-vbcable-flag', checked),
 
+  // ── Stop hotkey settings ──
+  getStopHotkey: (): Promise<string> => ipcRenderer.invoke('get-stop-hotkey'),
+  setStopHotkey: (hotkey: string): Promise<void> => ipcRenderer.invoke('set-stop-hotkey', hotkey),
+
   // ── Tray ──
   updateTrayStatus: (isPlaying: boolean): void => ipcRenderer.send('tray-update-status', isPlaying),
   onStopAllSounds: (cb: () => void) => {

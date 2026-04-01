@@ -1306,6 +1306,138 @@ body,
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.7s linear infinite; }
 
+/* ── Stop All Button ─────────────────────────────────────────── */
+.stop-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.stop-all-btn:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.stop-all-btn.playing {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.stop-all-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Hotkey Settings ─────────────────────────────────────────── */
+.hotkey-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hotkey-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.hotkey-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotkey-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.hotkey-badge.unassigned {
+  color: var(--text-muted);
+}
+
+.hotkey-capture-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+
+.hotkey-capture-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.hotkey-capture-area.listening {
+  border-color: var(--violet);
+}
+
+.hotkey-capture-area.captured {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.hotkey-capture-area .pulse-ring {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--violet);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  50% { opacity: 0.3; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.captured-key {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success);
+  z-index: 1;
+}
+
+.capture-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hotkey-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ── Group Modal ─────────────────────────────────────────────── */
 .group-modal-box {
   width: 520px;

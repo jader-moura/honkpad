@@ -12,7 +12,7 @@ import { ImportModal } from './components/ImportModal'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings, Search
+  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings, Search, StopCircle, Keyboard
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,6 +26,28 @@ interface AudioDevice {
 interface InputDevice {
   deviceId: string
   label: string
+}
+
+// ─── Hotkey Helpers ───────────────────────────────────────────────────────────
+
+function formatHotkeyDisplay(keys: string[]): string {
+  const order = ['Control', 'Alt', 'Shift', 'Meta']
+  const mods = keys.filter(k => order.includes(k)).sort((a, b) => order.indexOf(a) - order.indexOf(b))
+  const normals = keys.filter(k => !order.includes(k))
+  return [...mods, ...normals]
+    .map(k => k === 'Control' ? 'Ctrl' : k === ' ' ? 'Space' : k)
+    .join('+')
+}
+
+function formatHotkeyElectron(keys: string[]): string {
+  const map: Record<string, string> = {
+    Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Meta: 'Super',
+    ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+  }
+  const order = ['Control', 'Alt', 'Shift', 'Meta']
+  const mods = keys.filter(k => order.includes(k)).sort((a, b) => order.indexOf(a) - order.indexOf(b))
+  const normals = keys.filter(k => !order.includes(k))
+  return [...mods, ...normals].map(k => map[k] ?? (k.length === 1 ? k.toUpperCase() : k)).join('+')
 }
 
 function isCableInputDevice(label: string): boolean {
@@ -219,6 +241,11 @@ export default function App() {
   const [conflict, setConflict] = useState<ConflictInfo | null>(null)
   const [conflictDismissed, setConflictDismissed] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
+
+  // ── Stop hotkey settings ──
+  const [stopHotkey, setStopHotkeyState] = useState('Ctrl+Shift+S')
+  const [capturingStopHotkey, setCapturingStopHotkey] = useState(false)
+  const [capturedStopKeys, setCapturedStopKeys] = useState<string[]>([])
 
   const stopCurrentRef = useRef<(() => void) | null>(null)
 
@@ -470,11 +497,49 @@ export default function App() {
     window.electronAPI.updateTrayStatus(playingId !== null)
   }, [playingId])
 
-  // Stop all sounds from tray menu
+  // Stop all sounds from tray / global hotkey
   useEffect(() => {
     const unsub = window.electronAPI.onStopAllSounds(() => stopSound())
     return () => { if (unsub) unsub() }
   }, [stopSound])
+
+  // Load persisted stop hotkey
+  useEffect(() => {
+    window.electronAPI.getStopHotkey().then(setStopHotkeyState)
+  }, [])
+
+  // Capture keys for stop hotkey reassignment
+  useEffect(() => {
+    if (!capturingStopHotkey) return
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault()
+      if (e.key === 'Escape') { setCapturingStopHotkey(false); setCapturedStopKeys([]); return }
+      const held = new Set<string>()
+      if (e.ctrlKey) held.add('Control')
+      if (e.altKey) held.add('Alt')
+      if (e.shiftKey) held.add('Shift')
+      if (e.metaKey) held.add('Meta')
+      const mods = ['Control', 'Alt', 'Shift', 'Meta']
+      if (!mods.includes(e.key)) held.add(e.key)
+      setCapturedStopKeys([...held])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [capturingStopHotkey])
+
+  const handleConfirmStopHotkey = async () => {
+    if (capturedStopKeys.length === 0) return
+    const hotkey = formatHotkeyElectron(capturedStopKeys)
+    await window.electronAPI.setStopHotkey(hotkey)
+    setStopHotkeyState(hotkey)
+    setCapturingStopHotkey(false)
+    setCapturedStopKeys([])
+  }
+
+  const handleRemoveStopHotkey = async () => {
+    await window.electronAPI.setStopHotkey('')
+    setStopHotkeyState('')
+  }
 
   const handleImport = async () => {
     const paths = await window.electronAPI.openFileDialog()
@@ -564,6 +629,14 @@ export default function App() {
             </div>
 
             <div className="toolbar-right">
+              <button
+                className={`stop-all-btn ${playingId ? 'playing' : ''}`}
+                onClick={stopSound}
+                title={`Parar todos os sons${stopHotkey ? ` (${stopHotkey})` : ''}`}
+                disabled={!playingId}
+              >
+                <StopCircle size={15} />
+              </button>
               {tab === 'sounds' && (
                 <button className="btn-primary" onClick={() => setShowImportModal(true)}>
                   <FolderOpen size={15} /> Importar Áudios
@@ -720,6 +793,53 @@ export default function App() {
                   />
                   <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label="Volume Monitor" />
                 </div>
+              </div>
+            </div>
+
+            {/* Stop All Hotkey Settings */}
+            <div className="settings-section">
+              <div className="settings-section-title">
+                <Keyboard size={14} /> Parar Todos (Hotkey)
+              </div>
+              <div className="hotkey-setting">
+                <label className="hotkey-label">Atalho para parar todos os sons</label>
+                <div className="hotkey-row">
+                  <span className={`hotkey-badge ${stopHotkey ? 'assigned' : 'unassigned'}`}>
+                    <Keyboard size={12} />
+                    <span>{stopHotkey || 'Nenhuma'}</span>
+                  </span>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setCapturingStopHotkey(true)}
+                  >
+                    {stopHotkey ? 'Alterar' : 'Definir hotkey'}
+                  </button>
+                  {stopHotkey && (
+                    <button className="btn-ghost" onClick={handleRemoveStopHotkey}>
+                      Remover
+                    </button>
+                  )}
+                </div>
+
+                {capturingStopHotkey && (
+                  <div className="hotkey-capture-container">
+                    <div className={`hotkey-capture-area ${capturingStopHotkey ? 'listening' : ''} ${capturedStopKeys.length > 0 ? 'captured' : ''}`}>
+                      {capturingStopHotkey && <div className="pulse-ring" />}
+                      {capturedStopKeys.length > 0
+                        ? <span className="captured-key">{formatHotkeyDisplay(capturedStopKeys)}</span>
+                        : <span className="capture-hint">Pressione as teclas…</span>
+                      }
+                    </div>
+                    <div className="hotkey-actions">
+                      <button className="btn-ghost" onClick={() => { setCapturingStopHotkey(false); setCapturedStopKeys([]) }}>
+                        Cancelar
+                      </button>
+                      <button className="btn-primary" onClick={handleConfirmStopHotkey} disabled={capturedStopKeys.length === 0}>
+                        Confirmar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
