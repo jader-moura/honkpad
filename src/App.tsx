@@ -11,7 +11,7 @@ import { DebugPanel } from './components/DebugPanel'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Info, CheckCircle2, Plus, Layers, Cable, Monitor, Mic, MicOff
+  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ function MicPicker({ devices, selectedId, onSelect }: MicPickerProps) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'sounds' | 'groups'
+type Tab = 'sounds' | 'groups' | 'settings'
 
 export default function App() {
   const { sounds, groups, loaded, load, addSounds, removeSound, setHotkey,
@@ -179,7 +179,6 @@ export default function App() {
   const [modalSoundId, setModalSoundId] = useState<string | null>(null)
   const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
-  const [showStereoGuide, setShowStereoGuide] = useState(false)
 
   // ── Dual audio routing state ──
   const [cableInputDeviceId, setCableInputDeviceId] = useState<string | null>(() => localStorage.getItem('sdb_cableInput') || null)
@@ -525,7 +524,7 @@ export default function App() {
 
       {/* Main */}
       <main className="main">
-        {loaded && hasContent && (
+        {loaded && (
           <div className="toolbar">
             <div className="tabs">
               <button
@@ -541,6 +540,12 @@ export default function App() {
               >
                 <Layers size={13} /> Grupos
                 {groups.length > 0 && <span className="count">{groups.length}</span>}
+              </button>
+              <button
+                className={`tab-btn ${tab === 'settings' ? 'active' : ''}`}
+                onClick={() => setTab('settings')}
+              >
+                <Settings size={13} /> Configurações
               </button>
             </div>
 
@@ -559,73 +564,9 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Audio Routing Bar ── */}
-        {loaded && hasContent && (
-          <div className="dual-device-bar">
-            {/* Mic Input */}
-            <div className="dual-device-channel">
-              <div className="channel-header">
-                {micPassthroughActive ? <Mic size={13} /> : <MicOff size={13} />}
-                <span>Seu Microfone</span>
-                {micPassthroughActive && <span className="badge-sm badge-active">Ativo</span>}
-              </div>
-              <div className="device-selector" onClick={e => e.stopPropagation()}>
-                <MicPicker
-                  devices={inputs}
-                  selectedId={micDeviceId}
-                  onSelect={setMicDeviceId}
-                />
-              </div>
-              {!micDeviceId && (
-                <div className="channel-hint">
-                  Selecione seu mic para que sua voz passe pelo CABLE junto com os sons.
-                </div>
-              )}
-            </div>
-
-            <div className="dual-device-divider" />
-
-            {/* Virtual Output (CABLE Input) */}
-            <div className="dual-device-channel">
-              <div className="channel-header">
-                <Cable size={13} />
-                <span>Saída Virtual</span>
-                {hasCableInput && <span className="badge-sm">Auto</span>}
-              </div>
-              <DevicePicker
-                devices={outputs}
-                selectedId={cableInputDeviceId}
-                onSelect={setCableInputDeviceId}
-                label="Saída Virtual (CABLE Input)"
-                icon={<Cable size={13} />}
-                accentClass="cable-accent"
-              />
-              <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label="Volume Virtual" />
-            </div>
-
-            <div className="dual-device-divider" />
-
-            {/* Monitor Output */}
-            <div className="dual-device-channel">
-              <div className="channel-header">
-                <Monitor size={13} />
-                <span>Monitor (Você)</span>
-              </div>
-              <DevicePicker
-                devices={outputs}
-                selectedId={monitorDeviceId}
-                onSelect={setMonitorDeviceId}
-                label="Monitor (Seus fones/caixas)"
-                icon={<Volume2 size={13} />}
-              />
-              <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label="Volume Monitor" />
-            </div>
-          </div>
-        )}
-
         {!loaded && <div className="loading"><div className="spinner" /></div>}
 
-        {loaded && !hasContent && <EmptyState onImport={handleImport} />}
+        {loaded && !hasContent && tab !== 'settings' && <EmptyState onImport={handleImport} />}
 
         {/* Sounds tab */}
         {loaded && tab === 'sounds' && sounds.length > 0 && (
@@ -676,6 +617,77 @@ export default function App() {
             <button className="btn-primary" onClick={handleCreateGroup}>
               <Plus size={15} /> Novo Grupo
             </button>
+          </div>
+        )}
+
+        {/* Settings tab */}
+        {loaded && tab === 'settings' && (
+          <div className="settings-page">
+            <div className="settings-section">
+              <div className="settings-section-title">
+                <Cable size={14} /> Roteamento de Áudio
+              </div>
+              <div className="dual-device-bar">
+                {/* Mic Input */}
+                <div className="dual-device-channel">
+                  <div className="channel-header">
+                    {micPassthroughActive ? <Mic size={13} /> : <MicOff size={13} />}
+                    <span>Seu Microfone</span>
+                    {micPassthroughActive && <span className="badge-sm badge-active">Ativo</span>}
+                  </div>
+                  <div className="device-selector" onClick={e => e.stopPropagation()}>
+                    <MicPicker
+                      devices={inputs}
+                      selectedId={micDeviceId}
+                      onSelect={setMicDeviceId}
+                    />
+                  </div>
+                  {!micDeviceId && (
+                    <div className="channel-hint">
+                      Selecione seu mic para que sua voz passe pelo CABLE junto com os sons.
+                    </div>
+                  )}
+                </div>
+
+                <div className="dual-device-divider" />
+
+                {/* Virtual Output (CABLE Input) */}
+                <div className="dual-device-channel">
+                  <div className="channel-header">
+                    <Cable size={13} />
+                    <span>Saída Virtual</span>
+                    {hasCableInput && <span className="badge-sm">Auto</span>}
+                  </div>
+                  <DevicePicker
+                    devices={outputs}
+                    selectedId={cableInputDeviceId}
+                    onSelect={setCableInputDeviceId}
+                    label="Saída Virtual (CABLE Input)"
+                    icon={<Cable size={13} />}
+                    accentClass="cable-accent"
+                  />
+                  <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label="Volume Virtual" />
+                </div>
+
+                <div className="dual-device-divider" />
+
+                {/* Monitor Output */}
+                <div className="dual-device-channel">
+                  <div className="channel-header">
+                    <Monitor size={13} />
+                    <span>Monitor (Você)</span>
+                  </div>
+                  <DevicePicker
+                    devices={outputs}
+                    selectedId={monitorDeviceId}
+                    onSelect={setMonitorDeviceId}
+                    label="Monitor (Seus fones/caixas)"
+                    icon={<Volume2 size={13} />}
+                  />
+                  <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label="Volume Monitor" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
