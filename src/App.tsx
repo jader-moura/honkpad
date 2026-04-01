@@ -5,10 +5,13 @@ import { GroupCard } from './components/GroupCard'
 import { GroupModal } from './components/GroupModal'
 import { HotkeyModal } from './components/HotkeyModal'
 import { EmptyState } from './components/EmptyState'
-import { SoundGroup } from './types/global'
+import { VBCableSetup } from './components/VBCableSetup'
+import { ConflictWarning } from './components/ConflictWarning'
+import { DebugPanel } from './components/DebugPanel'
+import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Info, CheckCircle2, Plus, Layers
+  Volume2, ChevronDown, Info, CheckCircle2, Plus, Layers, Cable, Monitor, Mic, MicOff
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,13 +19,17 @@ import {
 interface AudioDevice {
   deviceId: string
   label: string
-  isStereoMix: boolean
+  isCableInput: boolean
 }
 
-function isStereoMixDevice(label: string): boolean {
+interface InputDevice {
+  deviceId: string
+  label: string
+}
+
+function isCableInputDevice(label: string): boolean {
   const l = label.toLowerCase()
-  return l.includes('stereo mix') || l.includes('what u hear') ||
-    l.includes('wave out mix') || l.includes('loopback')
+  return l.includes('cable input')
 }
 
 function toFileUrl(filePath: string): string {
@@ -30,33 +37,36 @@ function toFileUrl(filePath: string): string {
   return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
 }
 
-// ─── Device Picker ────────────────────────────────────────────────────────────
+// ─── Device Picker (dual-mode) ────────────────────────────────────────────────
 
 interface DevicePickerProps {
   devices: AudioDevice[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  label: string
+  icon: React.ReactNode
+  accentClass?: string
 }
 
-function DevicePicker({ devices, selectedId, onSelect }: DevicePickerProps) {
+function DevicePicker({ devices, selectedId, onSelect, label, icon, accentClass }: DevicePickerProps) {
   const [open, setOpen] = useState(false)
   const selected = devices.find(d => d.deviceId === selectedId)
 
   return (
     <div className="device-selector" onClick={e => e.stopPropagation()}>
       <button
-        className={`device-btn ${open ? 'open' : ''} ${selectedId ? 'active' : ''}`}
+        className={`device-btn ${open ? 'open' : ''} ${selectedId ? 'active' : ''} ${accentClass || ''}`}
         onClick={() => setOpen(v => !v)}
-        title="Selecionar saída de áudio"
+        title={label}
       >
-        <Volume2 size={13} />
+        {icon}
         <span className="device-label">{selected?.label ?? 'Padrão do sistema'}</span>
         <ChevronDown size={12} className={`chevron ${open ? 'rotated' : ''}`} />
       </button>
 
       {open && (
         <div className="device-menu">
-          <div className="device-menu-header">Saída de áudio</div>
+          <div className="device-menu-header">{label}</div>
           <button
             className={`device-menu-item ${!selectedId ? 'active' : ''}`}
             onClick={() => { onSelect(null); setOpen(false) }}
@@ -66,19 +76,94 @@ function DevicePicker({ devices, selectedId, onSelect }: DevicePickerProps) {
           {devices.map(d => (
             <button
               key={d.deviceId}
-              className={`device-menu-item ${d.deviceId === selectedId ? 'active' : ''} ${d.isStereoMix ? 'stereo-mix' : ''}`}
+              className={`device-menu-item ${d.deviceId === selectedId ? 'active' : ''} ${d.isCableInput ? 'cable-device' : ''}`}
               onClick={() => { onSelect(d.deviceId); setOpen(false) }}
             >
-              {d.isStereoMix && <span className="badge-sm">Nativo</span>}
+              {d.isCableInput && <span className="badge-sm">Virtual</span>}
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Volume Slider ────────────────────────────────────────────────────────────
+
+interface VolumeSliderProps {
+  value: number
+  onChange: (v: number) => void
+  label: string
+}
+
+function VolumeSlider({ value, onChange, label }: VolumeSliderProps) {
+  return (
+    <div className="volume-control">
+      <Volume2 size={12} />
+      <input
+        type="range"
+        className="volume-slider"
+        min={0}
+        max={1}
+        step={0.01}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        title={`${label}: ${Math.round(value * 100)}%`}
+      />
+      <span className="volume-value">{Math.round(value * 100)}%</span>
+    </div>
+  )
+}
+
+// ─── Mic Picker ───────────────────────────────────────────────────────────────
+
+interface MicPickerProps {
+  devices: InputDevice[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+}
+
+function MicPicker({ devices, selectedId, onSelect }: MicPickerProps) {
+  const [open, setOpen] = useState(false)
+  const selected = devices.find(d => d.deviceId === selectedId)
+
+  return (
+    <>
+      <button
+        className={`device-btn ${open ? 'open' : ''} ${selectedId ? 'active mic-active' : ''}`}
+        onClick={() => setOpen(v => !v)}
+        title="Selecionar microfone"
+      >
+        {selectedId ? <Mic size={13} /> : <MicOff size={13} />}
+        <span className="device-label">{selected?.label ?? 'Nenhum (voz desativada)'}</span>
+        <ChevronDown size={12} className={`chevron ${open ? 'rotated' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="device-menu">
+          <div className="device-menu-header">Microfone real</div>
+          <button
+            className={`device-menu-item ${!selectedId ? 'active' : ''}`}
+            onClick={() => { onSelect(null); setOpen(false) }}
+          >
+            Nenhum — voz desativada
+          </button>
+          {devices.map(d => (
+            <button
+              key={d.deviceId}
+              className={`device-menu-item ${d.deviceId === selectedId ? 'active' : ''}`}
+              onClick={() => { onSelect(d.deviceId); setOpen(false) }}
+            >
               {d.label}
             </button>
           ))}
           <div className="device-menu-hint">
-            Para que outros ouçam na call: selecione <em>CABLE Input</em> aqui e <em>CABLE Output</em> como mic.
+            Sua voz será encaminhada pelo CABLE junto com os sons do soundboard.
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -95,33 +180,195 @@ export default function App() {
   const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showStereoGuide, setShowStereoGuide] = useState(false)
-  const [outputDeviceId, setOutputDeviceId] = useState<string | null>(null)
+
+  // ── Dual audio routing state ──
+  const [cableInputDeviceId, setCableInputDeviceId] = useState<string | null>(() => localStorage.getItem('sdb_cableInput') || null)
+  const [monitorDeviceId, setMonitorDeviceId] = useState<string | null>(() => localStorage.getItem('sdb_monitor') || null)
+  const [virtualVolume, setVirtualVolume] = useState(() => {
+    const saved = localStorage.getItem('sdb_volVirtual')
+    return saved !== null ? Number(saved) : 1.0
+  })
+  const [monitorVolume, setMonitorVolume] = useState(() => {
+    const saved = localStorage.getItem('sdb_volMonitor')
+    return saved !== null ? Number(saved) : 1.0
+  })
   const [outputs, setOutputs] = useState<AudioDevice[]>([])
+
+  // ── Mic passthrough state ──
+  const [inputs, setInputs] = useState<InputDevice[]>([])
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(() => localStorage.getItem('sdb_mic') || null)
+  const [micPassthroughActive, setMicPassthroughActive] = useState(false)
+  const micStreamRef = useRef<MediaStream | null>(null)
+  const micAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  // ── Persistence ──
+  useEffect(() => { if (cableInputDeviceId) localStorage.setItem('sdb_cableInput', cableInputDeviceId) }, [cableInputDeviceId])
+  useEffect(() => { if (monitorDeviceId) localStorage.setItem('sdb_monitor', monitorDeviceId) }, [monitorDeviceId])
+  useEffect(() => {
+    if (micDeviceId) localStorage.setItem('sdb_mic', micDeviceId)
+    else localStorage.removeItem('sdb_mic')
+  }, [micDeviceId])
+  useEffect(() => { localStorage.setItem('sdb_volVirtual', virtualVolume.toString()) }, [virtualVolume])
+  useEffect(() => { localStorage.setItem('sdb_volMonitor', monitorVolume.toString()) }, [monitorVolume])
+
+  // ── VB-Cable state ──
+  const [showVBCableSetup, setShowVBCableSetup] = useState(false)
+  const [vbcableStatus, setVbcableStatus] = useState<VBCableStatus | null>(null)
+  const [conflict, setConflict] = useState<ConflictInfo | null>(null)
+  const [conflictDismissed, setConflictDismissed] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
 
   const stopCurrentRef = useRef<(() => void) | null>(null)
 
   useEffect(() => { load() }, [load])
 
+  // ── VB-Cable check on launch ──
+  useEffect(() => {
+    async function initVBCable() {
+      try {
+        const alreadyChecked = await window.electronAPI.getVBCableFlag()
+        if (!alreadyChecked) {
+          setShowVBCableSetup(true)
+          return
+        }
+        // Already checked before — just grab status for debug panel
+        const status = await window.electronAPI.checkVBCable()
+        setVbcableStatus(status)
+        // Check for conflicts
+        const conflictResult = await window.electronAPI.detectConflicts()
+        setConflict(conflictResult)
+      } catch {
+        // silently continue
+      }
+    }
+    initVBCable()
+  }, [])
+
+  // ── Audio device enumeration with auto-detect ──
   useEffect(() => {
     async function loadDevices() {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => { })
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => {})
         const all = await navigator.mediaDevices.enumerateDevices()
-        setOutputs(
-          all.filter(d => d.kind === 'audiooutput').map(d => ({
+
+        // Output devices
+        const outputDevices = all.filter(d => d.kind === 'audiooutput').map(d => ({
+          deviceId: d.deviceId,
+          label: d.label || `Dispositivo (${d.deviceId.slice(0, 8)}…)`,
+          isCableInput: isCableInputDevice(d.label),
+        }))
+        setOutputs(outputDevices)
+
+        // Input devices (mics) — exclude CABLE Output (it's not a real mic)
+        const inputDevices = all
+          .filter(d => d.kind === 'audioinput')
+          .filter(d => !d.label.toLowerCase().includes('cable output'))
+          .map(d => ({
             deviceId: d.deviceId,
-            label: d.label || `Dispositivo (${d.deviceId.slice(0, 8)}…)`,
-            isStereoMix: isStereoMixDevice(d.label),
+            label: d.label || `Microfone (${d.deviceId.slice(0, 8)}…)`,
           }))
-        )
+        setInputs(inputDevices)
+
+        // Auto-detect CABLE Input if not already set
+        if (!cableInputDeviceId) {
+          const cable = outputDevices.find(d => d.isCableInput)
+          if (cable) {
+            setCableInputDeviceId(cable.deviceId)
+          }
+        }
+
+        // Auto-detect monitor output (first non-CABLE, non-default device)
+        if (!monitorDeviceId) {
+          const monitor = outputDevices.find(
+            d => !d.isCableInput && d.deviceId !== 'default' && d.deviceId !== 'communications'
+          )
+          if (monitor) {
+            setMonitorDeviceId(monitor.deviceId)
+          }
+        }
       } catch { /* permissions denied */ }
     }
     loadDevices()
     navigator.mediaDevices.addEventListener('devicechange', loadDevices)
     return () => navigator.mediaDevices.removeEventListener('devicechange', loadDevices)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Mic passthrough engine ──
+  // Captures user's real mic and routes it to CABLE Input so others hear voice + sounds.
+  // Only routes to CABLE Input — NOT to monitor speakers — to avoid feedback loops.
+  useEffect(() => {
+    let cancelled = false
+
+    async function startPassthrough() {
+      // Stop any existing passthrough first
+      stopMicPassthrough()
+
+      if (!micDeviceId || !cableInputDeviceId) {
+        setMicPassthroughActive(false)
+        return
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: micDeviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        })
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+
+        // Route mic stream to CABLE Input via HTMLAudioElement + setSinkId
+        const audio = new Audio()
+        audio.srcObject = stream
+        audio.volume = 1.0  // full volume — mic passthrough should be transparent
+
+        try {
+          const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
+          if (setSink) await setSink.call(audio, cableInputDeviceId)
+        } catch (err) {
+          console.warn('[Mic Passthrough] setSinkId failed:', err)
+        }
+
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+
+        await audio.play()
+        micStreamRef.current = stream
+        micAudioRef.current = audio
+        setMicPassthroughActive(true)
+        console.log('[Mic Passthrough] Active:', micDeviceId, '→', cableInputDeviceId)
+      } catch (err) {
+        console.error('[Mic Passthrough] Failed:', err)
+        setMicPassthroughActive(false)
+      }
+    }
+
+    startPassthrough()
+    return () => { cancelled = true; stopMicPassthrough() }
+  }, [micDeviceId, cableInputDeviceId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function stopMicPassthrough() {
+    if (micAudioRef.current) {
+      micAudioRef.current.pause()
+      micAudioRef.current.srcObject = null
+      micAudioRef.current = null
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop())
+      micStreamRef.current = null
+    }
+    setMicPassthroughActive(false)
+  }
+
+  // ── Ctrl+Shift+D debug panel toggle ──
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        setShowDebug(v => !v)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // ── Centralized audio playback ─────────────────────────────────────────────
+  // ── Dual-output audio playback ─────────────────────────────────────────────
   const playSound = useCallback(async (id: string) => {
     const sound = useSoundsStore.getState().sounds.find(s => s.id === id)
     if (!sound) return
@@ -131,25 +378,68 @@ export default function App() {
     setPlayingId(null)
 
     try {
-      const audio = new Audio(toFileUrl(sound.filePath))
-      if (outputDeviceId) {
-        const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
-        if (setSink) await setSink.call(audio, outputDeviceId).catch(() => { })
+      const audioElements: HTMLAudioElement[] = []
+      const playPromises: Promise<void>[] = []
+
+      // Helper to create and configure an audio element
+      const createOutput = async (deviceId: string | null, volume: number) => {
+        const audio = new Audio(toFileUrl(sound.filePath))
+        audio.volume = volume
+
+        if (deviceId) {
+          try {
+            const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
+            if (setSink) await setSink.call(audio, deviceId)
+          } catch (err) {
+            console.warn('[Soundboard] setSinkId failed for device:', deviceId, err)
+            // Fall through — play through default device instead of failing
+          }
+        }
+
+        audioElements.push(audio)
+        return audio
       }
+
+      // Output 1: CABLE Input (what others hear)
+      if (cableInputDeviceId) {
+        const cableAudio = await createOutput(cableInputDeviceId, virtualVolume)
+        playPromises.push(cableAudio.play())
+      }
+
+      // Output 2: Monitor (what user hears locally)
+      const monitorAudio = await createOutput(monitorDeviceId, monitorVolume)
+      playPromises.push(monitorAudio.play())
+
+      // Start both simultaneously to minimize drift
+      await Promise.all(playPromises)
+
       let done = false
-      audio.addEventListener('ended', () => {
-        if (!done) { done = true; setPlayingId(null); stopCurrentRef.current = null }
+      // Track "ended" on the monitor audio (primary tracking element)
+      const primaryAudio = audioElements[audioElements.length - 1]
+      primaryAudio.addEventListener('ended', () => {
+        if (!done) {
+          done = true
+          setPlayingId(null)
+          stopCurrentRef.current = null
+        }
       })
+
       setPlayingId(id)
-      await audio.play()
       stopCurrentRef.current = () => {
-        if (!done) { done = true; audio.pause(); audio.currentTime = 0; setPlayingId(null) }
+        if (!done) {
+          done = true
+          for (const a of audioElements) {
+            a.pause()
+            a.currentTime = 0
+          }
+          setPlayingId(null)
+        }
       }
     } catch (err) {
       console.error('[Soundboard] Play failed:', err, sound.filePath)
       setPlayingId(null)
     }
-  }, [outputDeviceId])
+  }, [cableInputDeviceId, monitorDeviceId, virtualVolume, monitorVolume])
 
   const stopSound = useCallback(() => {
     stopCurrentRef.current?.()
@@ -189,13 +479,29 @@ export default function App() {
     setTab('groups')
   }
 
+  const handleVBCableComplete = async () => {
+    setShowVBCableSetup(false)
+    // Refresh status after setup
+    try {
+      const status = await window.electronAPI.checkVBCable()
+      setVbcableStatus(status)
+      const conflictResult = await window.electronAPI.detectConflicts()
+      setConflict(conflictResult)
+    } catch { /* continue */ }
+  }
+
   const modalSound = sounds.find(s => s.id === modalSoundId) ?? null
   const editGroup = groups.find(g => g.id === editGroupId) ?? null
-  const hasStereoMix = outputs.some(d => d.isStereoMix)
   const hasContent = sounds.length > 0 || groups.length > 0
+  const hasCableInput = outputs.some(d => d.isCableInput)
 
   return (
     <>
+      {/* VB-Cable Setup Overlay (first launch) */}
+      {showVBCableSetup && (
+        <VBCableSetup onComplete={handleVBCableComplete} />
+      )}
+
       {/* Titlebar */}
       <div className="titlebar">
         <div className="titlebar-drag">
@@ -209,41 +515,12 @@ export default function App() {
         </div>
       </div>
 
-      {/* Stereo Mix guide */}
-      {showStereoGuide && (
-        <div className="stereo-guide" onClick={() => setShowStereoGuide(false)}>
-          <div className="stereo-guide-box" onClick={e => e.stopPropagation()}>
-            <button className="stereo-guide-close" onClick={() => setShowStereoGuide(false)}><X size={14} /></button>
-            <h3>Usar como microfone — em qualquer app</h3>
-            <p className="guide-intro">
-              O soundboard reproduz sons em um dispositivo de saída. Para que outros ouçam, você precisa que esse dispositivo apareça como <strong>microfone</strong>.
-            </p>
-            <div className="guide-option">
-              <div className="guide-option-title">Opção 1 — Stereo Mix (Windows nativo)</div>
-              <ol className="guide-steps">
-                <li><strong>Win + R</strong> → <em>mmsys.cpl</em> → aba <strong>Gravação</strong></li>
-                <li>Botão direito em área vazia → <em>"Mostrar dispositivos desativados"</em></li>
-                <li>Botão direito em <strong>Stereo Mix</strong> → <em>Habilitar</em> → <em>"Definir como padrão"</em></li>
-                <li>No jogo/Discord → mic = <strong>Stereo Mix</strong>, Soundboard → saída padrão</li>
-              </ol>
-            </div>
-            <div className="guide-option">
-              <div className="guide-option-title">Opção 2 — VB-CABLE (recomendado para USB)</div>
-              <ol className="guide-steps">
-                <li>Instalar <strong>VB-CABLE</strong> em <em>vb-audio.com/Cable</em> (gratuito)</li>
-                <li>Soundboard → Saída = <strong>CABLE Input</strong></li>
-                <li>No jogo/Discord → mic = <strong>CABLE Output</strong></li>
-                <li>Opcional: HyperX → mmsys.cpl → Properties → Ouvir → reproduzir pelo CABLE Input</li>
-              </ol>
-            </div>
-            <div className="guide-note">
-              {hasStereoMix
-                ? <><CheckCircle2 size={14} className="guide-check" /> Stereo Mix detectado!</>
-                : <><Info size={14} /> Stereo Mix não encontrado. Use VB-CABLE para headsets USB.</>
-              }
-            </div>
-          </div>
-        </div>
+      {/* Conflict Warning Banner */}
+      {conflict?.hasConflict && !conflictDismissed && (
+        <ConflictWarning
+          conflict={conflict}
+          onDismiss={() => setConflictDismissed(true)}
+        />
       )}
 
       {/* Main */}
@@ -268,16 +545,6 @@ export default function App() {
             </div>
 
             <div className="toolbar-right">
-              <button
-                className={`stereo-mix-btn ${hasStereoMix ? 'found' : ''}`}
-                onClick={() => setShowStereoGuide(true)}
-              >
-                {hasStereoMix ? <CheckCircle2 size={13} /> : <Info size={13} />}
-                Como usar como mic
-              </button>
-
-              <DevicePicker devices={outputs} selectedId={outputDeviceId} onSelect={setOutputDeviceId} />
-
               {tab === 'sounds' && (
                 <button className="btn-primary" onClick={handleImport}>
                   <FolderOpen size={15} /> Importar Áudios
@@ -288,6 +555,70 @@ export default function App() {
                   <Plus size={15} /> Novo Grupo
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Audio Routing Bar ── */}
+        {loaded && hasContent && (
+          <div className="dual-device-bar">
+            {/* Mic Input */}
+            <div className="dual-device-channel">
+              <div className="channel-header">
+                {micPassthroughActive ? <Mic size={13} /> : <MicOff size={13} />}
+                <span>Seu Microfone</span>
+                {micPassthroughActive && <span className="badge-sm badge-active">Ativo</span>}
+              </div>
+              <div className="device-selector" onClick={e => e.stopPropagation()}>
+                <MicPicker
+                  devices={inputs}
+                  selectedId={micDeviceId}
+                  onSelect={setMicDeviceId}
+                />
+              </div>
+              {!micDeviceId && (
+                <div className="channel-hint">
+                  Selecione seu mic para que sua voz passe pelo CABLE junto com os sons.
+                </div>
+              )}
+            </div>
+
+            <div className="dual-device-divider" />
+
+            {/* Virtual Output (CABLE Input) */}
+            <div className="dual-device-channel">
+              <div className="channel-header">
+                <Cable size={13} />
+                <span>Saída Virtual</span>
+                {hasCableInput && <span className="badge-sm">Auto</span>}
+              </div>
+              <DevicePicker
+                devices={outputs}
+                selectedId={cableInputDeviceId}
+                onSelect={setCableInputDeviceId}
+                label="Saída Virtual (CABLE Input)"
+                icon={<Cable size={13} />}
+                accentClass="cable-accent"
+              />
+              <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label="Volume Virtual" />
+            </div>
+
+            <div className="dual-device-divider" />
+
+            {/* Monitor Output */}
+            <div className="dual-device-channel">
+              <div className="channel-header">
+                <Monitor size={13} />
+                <span>Monitor (Você)</span>
+              </div>
+              <DevicePicker
+                devices={outputs}
+                selectedId={monitorDeviceId}
+                onSelect={setMonitorDeviceId}
+                label="Monitor (Seus fones/caixas)"
+                icon={<Volume2 size={13} />}
+              />
+              <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label="Volume Monitor" />
             </div>
           </div>
         )}
@@ -371,6 +702,20 @@ export default function App() {
           onClose={() => setEditGroupId(null)}
         />
       )}
+
+      {/* Debug Panel */}
+      <DebugPanel
+        visible={showDebug}
+        onClose={() => setShowDebug(false)}
+        cableInputDeviceId={cableInputDeviceId}
+        monitorDeviceId={monitorDeviceId}
+        micDeviceId={micDeviceId}
+        micPassthroughActive={micPassthroughActive}
+        virtualVolume={virtualVolume}
+        monitorVolume={monitorVolume}
+        vbcableStatus={vbcableStatus}
+        conflict={conflict}
+      />
     </>
   )
 }

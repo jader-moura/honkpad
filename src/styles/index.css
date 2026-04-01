@@ -1255,3 +1255,572 @@ body,
   color: #ef4444;
   background: rgba(239, 68, 68, .1);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   VB-Cable Setup Overlay
+   ═══════════════════════════════════════════════════════════════ */
+
+.vbcable-setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .88);
+  backdrop-filter: blur(24px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fade-in .2s ease;
+}
+
+.vbcable-setup-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 48px 44px;
+  width: 440px;
+  max-width: calc(100vw - 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, .6),
+    0 0 0 1px rgba(124, 58, 237, .12),
+    0 0 120px rgba(124, 58, 237, .06);
+  animation: modal-in .25s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.vbcable-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.vbcable-icon.spinning {
+  color: var(--violet-lite);
+  background: var(--violet-bg);
+  border: 1px solid rgba(124, 58, 237, .25);
+  animation: spin .8s linear infinite;
+}
+
+.vbcable-icon.cable {
+  color: var(--violet-lite);
+  background: var(--violet-bg);
+  border: 1px solid rgba(124, 58, 237, .25);
+}
+
+.vbcable-icon.success {
+  color: var(--success);
+  background: rgba(34, 197, 94, .1);
+  border: 1px solid rgba(34, 197, 94, .3);
+}
+
+.vbcable-icon.error {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid rgba(239, 68, 68, .3);
+}
+
+.vbcable-setup-box h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.vbcable-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+.vbcable-desc strong {
+  color: var(--text);
+}
+
+.vbcable-subdesc {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.vbcable-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.vbcable-feature {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.vbcable-feature svg {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.vbcable-skip {
+  font-size: 12px !important;
+  color: var(--text-faint) !important;
+  border: none !important;
+  padding: 6px 12px !important;
+}
+
+.vbcable-skip:hover {
+  color: var(--text-muted) !important;
+}
+
+.vbcable-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.vbcable-progress-bar {
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--violet), var(--violet-lite));
+  border-radius: 99px;
+  animation: progress-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.vbcable-error-detail {
+  font-size: 12px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(239, 68, 68, .2);
+  text-align: left;
+  width: 100%;
+  word-break: break-word;
+}
+
+.vbcable-actions-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Conflict Warning Banner
+   ═══════════════════════════════════════════════════════════════ */
+
+.conflict-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: rgba(234, 179, 8, .06);
+  border-bottom: 1px solid rgba(234, 179, 8, .2);
+  animation: fade-in .2s ease;
+}
+
+.conflict-banner-content {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.conflict-icon {
+  color: #eab308;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.conflict-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conflict-text strong {
+  font-size: 13px;
+  color: #eab308;
+}
+
+.conflict-details {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conflict-details li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.conflict-details li::before {
+  content: '• ';
+  color: #eab308;
+}
+
+.conflict-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.conflict-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.conflict-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  transition: all var(--transition);
+}
+
+.conflict-dismiss:hover {
+  color: var(--text-muted);
+  background: var(--surface2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Dual Device Routing Bar
+   ═══════════════════════════════════════════════════════════════ */
+
+.dual-device-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  flex-shrink: 0;
+}
+
+.dual-device-channel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dual-device-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 0 18px;
+  align-self: stretch;
+}
+
+.channel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-faint);
+}
+
+.channel-header .badge-sm {
+  font-size: 8px;
+  padding: 0 5px;
+}
+
+.device-btn.cable-accent {
+  border-color: rgba(124, 58, 237, .3);
+}
+
+.device-btn.cable-accent.active {
+  border-color: var(--violet);
+  color: var(--violet-lite);
+  background: var(--violet-bg);
+}
+
+.device-menu-item.cable-device {
+  color: var(--violet-lite);
+  font-weight: 500;
+}
+
+/* ─── Volume Slider ────────────────────────────────────────────── */
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-faint);
+}
+
+.volume-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--surface2);
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--violet);
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, .4);
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+}
+
+.volume-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Debug Panel
+   ═══════════════════════════════════════════════════════════════ */
+
+.debug-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .4);
+  z-index: 1500;
+  animation: fade-in .1s ease;
+}
+
+.debug-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: rgba(21, 21, 24, .96);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: debug-slide-in .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+@keyframes debug-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.debug-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet-lite);
+}
+
+.debug-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  transition: all var(--transition);
+}
+
+.debug-close:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.debug-section {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.debug-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+
+.debug-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.debug-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.debug-kv span:first-child {
+  color: var(--text-muted);
+}
+
+.debug-val {
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debug-ok {
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.debug-err {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.debug-muted {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.debug-conflict-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-conflict-list li {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.debug-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-device {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.debug-device.active-cable {
+  border-color: rgba(124, 58, 237, .4);
+  background: var(--violet-bg);
+}
+
+.debug-device.active-monitor {
+  border-color: rgba(34, 197, 94, .3);
+  background: rgba(34, 197, 94, .06);
+}
+
+.debug-device-label {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.debug-device-id {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: monospace;
+}
+
+.debug-footer {
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Mic Passthrough
+   ═══════════════════════════════════════════════════════════════ */
+
+.device-btn.mic-active {
+  border-color: rgba(34, 197, 94, .3);
+  color: var(--success);
+  background: rgba(34, 197, 94, .06);
+}
+
+.badge-sm.badge-active {
+  background: rgba(34, 197, 94, .1);
+  color: var(--success);
+  border-color: rgba(34, 197, 94, .3);
+}
+
+.channel-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.4;
+  margin-top: -2px;
+  padding: 0 4px;
+}

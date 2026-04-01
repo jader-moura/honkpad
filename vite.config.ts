@@ -17,7 +17,7 @@ export default defineConfig(({ command }) => ({
             minify: command !== 'serve',
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['electron', 'path', 'fs', 'url', 'electron-store'],
+              external: ['electron', 'path', 'fs', 'url', 'electron-store', 'electron-log'],
             },
           },
         },

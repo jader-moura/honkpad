@@ -1,6 +1,18 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell } from 'electron'
 import { join } from 'path'
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { execSync, spawn } from 'child_process'
 import Store from 'electron-store'
+import log from 'electron-log'
+
+// ── Logging ────────────────────────────────────────────────────────────────────
+
+log.transports.file.level = 'info'
+log.transports.console.level = 'debug'
+log.initialize({ preload: false })
+log.info('[Main] App starting…')
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface SoundEntry {
   id: string
@@ -19,11 +31,184 @@ interface SoundGroup {
 interface StoreSchema {
   sounds: SoundEntry[]
   groups: SoundGroup[]
+  vbcableChecked: boolean
 }
 
-const store = new Store<StoreSchema>({ defaults: { sounds: [], groups: [] } })
+interface VBCableStatus {
+  installed: boolean
+  cableInputFound: boolean
+  cableOutputFound: boolean
+}
+
+interface ConflictInfo {
+  hasConflict: boolean
+  details: string[]
+}
+
+const store = new Store<StoreSchema>({
+  defaults: { sounds: [], groups: [], vbcableChecked: false },
+})
 
 let mainWindow: BrowserWindow | null = null
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+/** Resolve path to bundled resources (works in dev and production) */
+function getResourcePath(...segments: string[]): string {
+  const basePath = app.isPackaged
+    ? join(process.resourcesPath, ...segments)
+    : join(app.getAppPath(), ...segments)
+  return basePath
+}
+
+/** Run a PowerShell command and return stdout */
+function runPowerShell(command: string): string {
+  try {
+    const result = execSync(
+      `powershell.exe -NoProfile -NonInteractive -Command "${command.replace(/"/g, '\\"')}"`,
+      { encoding: 'utf-8', timeout: 15000, windowsHide: true },
+    )
+    return result.trim()
+  } catch (err) {
+    log.warn('[PowerShell] Command failed:', command, err)
+    return ''
+  }
+}
+
+// ── VB-Cable Detection ─────────────────────────────────────────────────────────
+
+function checkVBCableInstalled(): VBCableStatus {
+  log.info('[VBCable] Checking installation…')
+
+  const result: VBCableStatus = {
+    installed: false,
+    cableInputFound: false,
+    cableOutputFound: false,
+  }
+
+  // Primary approach: Get-PnpDevice (most reliable for virtual audio)
+  const pnpOutput = runPowerShell(
+    "Get-PnpDevice -FriendlyName '*VB-Audio*' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FriendlyName",
+  )
+
+  if (pnpOutput) {
+    log.info('[VBCable] PnpDevice found:', pnpOutput)
+    const lines = pnpOutput.toLowerCase()
+    result.installed = true
+    result.cableInputFound = lines.includes('cable input') || lines.includes('vb-audio')
+    result.cableOutputFound = lines.includes('cable output') || lines.includes('vb-audio')
+  } else {
+    log.info('[VBCable] No PnpDevice matching VB-Audio found')
+  }
+
+  log.info('[VBCable] Status:', JSON.stringify(result))
+  return result
+}
+
+// ── VB-Cable Installation ───────────────────────────────────────────────────────
+
+async function installVBCable(): Promise<{ success: boolean; error?: string }> {
+  const installerPath = getResourcePath('resources', 'vbcable', 'VBCABLE_Setup_x64.exe')
+  log.info('[VBCable] Installer path:', installerPath)
+
+  if (!existsSync(installerPath)) {
+    const msg = `Installer not found at: ${installerPath}`
+    log.error('[VBCable]', msg)
+    return { success: false, error: msg }
+  }
+
+  return new Promise((resolve) => {
+    // Use PowerShell Start-Process with -Verb RunAs to trigger UAC elevation
+    const psCommand = `Start-Process -FilePath '${installerPath.replace(/'/g, "''")}' -Verb RunAs -Wait`
+    log.info('[VBCable] Running elevated install…')
+
+    const child = spawn(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', psCommand],
+      { windowsHide: true },
+    )
+
+    let stderr = ''
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        log.info('[VBCable] Install completed successfully (exit code 0)')
+        resolve({ success: true })
+      } else {
+        const msg = `Installer exited with code ${code}. ${stderr}`.trim()
+        log.error('[VBCable] Install failed:', msg)
+        resolve({ success: false, error: msg })
+      }
+    })
+
+    child.on('error', (err) => {
+      const msg = `Failed to launch installer: ${err.message}`
+      log.error('[VBCable]', msg)
+      resolve({ success: false, error: msg })
+    })
+  })
+}
+
+// ── Conflict Detection ──────────────────────────────────────────────────────────
+
+function detectConflicts(): ConflictInfo {
+  log.info('[Conflict] Scanning for audio routing conflicts…')
+  const details: string[] = []
+
+  // 1. Check if CABLE Output is the default communication recording device
+  //    We query the registry for the default communication capture endpoint.
+  try {
+    const regOutput = runPowerShell(
+      "Get-ItemProperty 'HKCU:\\SOFTWARE\\Microsoft\\Multimedia\\Sound Mapper' -Name 'Record' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Record",
+    )
+    if (regOutput && regOutput.toLowerCase().includes('cable')) {
+      details.push('CABLE Output está definido como dispositivo de gravação padrão do Windows.')
+      log.info('[Conflict] CABLE Output is default recording device')
+    }
+  } catch {
+    log.warn('[Conflict] Could not read default recording device from registry')
+  }
+
+  // 2. Check OBS scene collection files for CABLE Output usage
+  try {
+    const obsPath = join(
+      process.env.APPDATA || '',
+      'obs-studio',
+      'basic',
+      'scenes',
+    )
+    if (existsSync(obsPath)) {
+      const files = readdirSync(obsPath).filter((f) => f.endsWith('.json'))
+      for (const file of files) {
+        try {
+          const content = readFileSync(join(obsPath, file), 'utf-8')
+          if (content.toLowerCase().includes('cable output')) {
+            details.push(
+              `OBS está usando "CABLE Output" como fonte de áudio (cena: ${file.replace('.json', '')}).`,
+            )
+            log.info('[Conflict] OBS scene using CABLE Output:', file)
+          }
+        } catch {
+          // skip unreadable file
+        }
+      }
+    }
+  } catch {
+    log.warn('[Conflict] Could not scan OBS scene files')
+  }
+
+  const result: ConflictInfo = {
+    hasConflict: details.length > 0,
+    details,
+  }
+  log.info('[Conflict] Result:', JSON.stringify(result))
+  return result
+}
+
+// ── Hotkey Registration ─────────────────────────────────────────────────────────
 
 function registerAllHotkeys() {
   globalShortcut.unregisterAll()
@@ -48,7 +233,7 @@ function registerAllHotkeys() {
       try {
         globalShortcut.register(group.hotkey, () => {
           // Resolve soundIds to actual sounds
-          const groupSounds = sounds.filter(s => group.soundIds.includes(s.id))
+          const groupSounds = sounds.filter((s) => group.soundIds.includes(s.id))
           if (groupSounds.length === 0) return
           const random = groupSounds[Math.floor(Math.random() * groupSounds.length)]
           mainWindow?.webContents.send('play-sound', random.id)
@@ -57,6 +242,8 @@ function registerAllHotkeys() {
     }
   }
 }
+
+// ── Window Creation ─────────────────────────────────────────────────────────────
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -84,33 +271,77 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
 
-  mainWindow.on('closed', () => { mainWindow = null })
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
 }
 
 // ── IPC Handlers ──────────────────────────────────────────────────────────────
 
+// Sounds CRUD
 ipcMain.handle('get-sounds', () => store.get('sounds'))
 ipcMain.handle('save-sounds', (_, sounds: SoundEntry[]) => {
   store.set('sounds', sounds)
   registerAllHotkeys()
 })
 
+// Groups CRUD
 ipcMain.handle('get-groups', () => store.get('groups'))
 ipcMain.handle('save-groups', (_, groups: SoundGroup[]) => {
   store.set('groups', groups)
   registerAllHotkeys()
 })
 
+// File dialog
 ipcMain.handle('open-file-dialog', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     title: 'Selecionar arquivos de áudio',
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'Áudio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'] }],
+    filters: [
+      { name: 'Áudio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'] },
+    ],
   })
   return result.filePaths
 })
 
-// Window controls
+// ── VB-Cable IPC Handlers ──────────────────────────────────────────────────────
+
+ipcMain.handle('check-vbcable', (): VBCableStatus => {
+  if (process.env.SKIP_VBCABLE_CHECK === 'true') {
+    log.info('[VBCable] SKIP_VBCABLE_CHECK is set, returning installed=true')
+    return { installed: true, cableInputFound: true, cableOutputFound: true }
+  }
+  return checkVBCableInstalled()
+})
+
+ipcMain.handle('install-vbcable', async (): Promise<{ success: boolean; error?: string }> => {
+  return installVBCable()
+})
+
+ipcMain.handle('detect-conflicts', (): ConflictInfo => {
+  return detectConflicts()
+})
+
+ipcMain.handle('open-sound-settings', () => {
+  log.info('[Settings] Opening Windows Sound settings (Recording tab)')
+  spawn('rundll32.exe', ['shell32.dll,Control_RunDLL', 'mmsys.cpl,,1'], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: false,
+  })
+})
+
+ipcMain.handle('get-vbcable-flag', (): boolean => {
+  return store.get('vbcableChecked')
+})
+
+ipcMain.handle('set-vbcable-flag', (_, checked: boolean) => {
+  store.set('vbcableChecked', checked)
+  log.info('[VBCable] Flag set to:', checked)
+})
+
+// ── Window Controls ────────────────────────────────────────────────────────────
+
 ipcMain.on('window-minimize', () => mainWindow?.minimize())
 ipcMain.on('window-maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize()
@@ -118,9 +349,10 @@ ipcMain.on('window-maximize', () => {
 })
 ipcMain.on('window-close', () => mainWindow?.close())
 
-// ── App lifecycle ─────────────────────────────────────────────────────────────
+// ── App Lifecycle ──────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
+  log.info('[Main] App ready')
   createWindow()
   registerAllHotkeys()
 })

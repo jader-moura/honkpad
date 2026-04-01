@@ -19,7 +19,7 @@ routed to a virtual cable device so others on calls/games hear the sounds via mi
 
 | Process | Entry | Can access |
 |---|---|---|
-| **Main** | `electron/main.ts` | Node.js, `electron-store`, `globalShortcut`, `dialog`, `ipcMain` |
+| **Main** | `electron/main.ts` | Node.js, `electron-store`, `electron-log`, `globalShortcut`, `dialog`, `ipcMain` |
 | **Renderer** | `src/main.tsx` → `src/App.tsx` | React, Web APIs, `window.electronAPI` only |
 
 The renderer **cannot** import anything from `electron/` or use Node APIs directly.
@@ -45,30 +45,42 @@ Missing any one of these causes a silent runtime error.
 
 ```
 electron/main.ts       — BrowserWindow creation, all IPC handlers, globalShortcut registration,
-                         electron-store read/write. Re-registers ALL hotkeys on every save.
+                         electron-store read/write, electron-log file logging.
+                         VB-Cable detection (PowerShell Get-PnpDevice), install (bundled exe
+                         with UAC elevation), conflict detection (OBS scene scan + default
+                         comm device check). Re-registers ALL hotkeys on every save.
 
 electron/preload.ts    — Thin bridge. Only re-exports IPC calls + ipcRenderer.on wrappers.
                          Keep it dumb — no logic here.
 
-src/types/global.d.ts  — Source of truth for SoundEntry, SoundGroup types and electronAPI shape.
-                         Both main process and renderer have their own copies of the interfaces
-                         (preload.ts duplicates them because it cannot import from src/).
+src/types/global.d.ts  — Source of truth for SoundEntry, SoundGroup, VBCableStatus, ConflictInfo
+                         types and electronAPI shape. Both main process and renderer have their
+                         own copies of the interfaces (preload.ts duplicates them).
 
-src/App.tsx            — Core playback engine + all UI orchestration.
-                         Contains: playSound(), stopSound(), playGroupRandom(), DevicePicker,
-                         tabs (Sons/Grupos), stereo guide modal, device enumeration.
+src/App.tsx            — Core DUAL-OUTPUT playback engine + all UI orchestration.
+                         Contains: playSound() with two HTMLAudioElement instances (CABLE Input
+                         + monitor), stopSound(), playGroupRandom(), dual DevicePicker, volume
+                         sliders, VBCableSetup flow, ConflictWarning, DebugPanel (Ctrl+Shift+D),
+                         tabs (Sons/Grupos), device enumeration with auto-detect.
 
 src/hooks/useSounds.ts — All CRUD: addSounds, removeSound, setHotkey, addGroup, removeGroup,
                          updateGroup. Removing a sound also removes it from all groups.
 
 src/components/
-  SoundCard.tsx        — Pure display. All callbacks (onPlay, onStop, onRemove, onHotkeyClick)
-                         come from App.tsx. No internal audio logic.
+  VBCableSetup.tsx     — Full-screen setup overlay for first-launch VB-Cable detection/install.
+                         States: checking, not-found, installing, restart, error. pt-BR.
+  ConflictWarning.tsx  — Dismissible banner when OBS/other app conflicts with CABLE Output.
+  DebugPanel.tsx       — Slide-out panel (Ctrl+Shift+D) showing all audio devices, routing,
+                         VB-Cable status, and conflicts.
+  SoundCard.tsx        — Pure display. All callbacks come from App.tsx. No internal audio logic.
   GroupCard.tsx        — Group display. onPlayRandom → App.tsx → picks random → playSound().
   GroupModal.tsx       — Self-contained modal with its own audio preview (HTMLAudioElement,
                          local to modal, stops on unmount). Includes hotkey capture sub-step.
   HotkeyModal.tsx      — Standalone hotkey capture modal for individual sounds.
   EmptyState.tsx       — Zero-state UI, shown when sounds.length === 0 && groups.length === 0.
+
+resources/vbcable/     — Bundled VB-Cable installer files (VBCABLE_Setup_x64.exe etc.).
+                         Used by install-vbcable IPC handler. ~2MB.
 
 src/styles/index.css   — All styles. Uses CSS custom properties (--violet, --surface, etc.).
                          No CSS modules, no Tailwind. Append new styles at the end.
@@ -80,16 +92,24 @@ src/styles/index.css   — All styles. Uses CSS custom properties (--violet, --s
 
 ```typescript
 // In App.tsx — the ONLY place audio is played (except GroupModal preview)
-const audio = new Audio(toFileUrl(sound.filePath))
-if (outputDeviceId) await audio.setSinkId(outputDeviceId)
-await audio.play()
+// DUAL OUTPUT: plays through CABLE Input (for others) AND monitor (for user)
+const createOutput = async (deviceId, volume) => {
+  const audio = new Audio(toFileUrl(sound.filePath))
+  audio.volume = volume
+  if (deviceId) await audio.setSinkId(deviceId) // may fail on some drivers — falls back
+  return audio
+}
+const cableAudio = await createOutput(cableInputDeviceId, virtualVolume)
+const monitorAudio = await createOutput(monitorDeviceId, monitorVolume)
+await Promise.all([cableAudio.play(), monitorAudio.play()]) // minimizes drift
 ```
 
 - `toFileUrl()` converts `C:\path\file.mp3` → `file:///C:/path/file.mp3`
 - `webSecurity: false` in BrowserWindow allows `file://` in renderer
-- `setSinkId()` routes audio to a specific output device (e.g. VB-CABLE Input)
-- Only ONE sound plays at a time — `stopCurrentRef.current?.()` is called before every new play
+- `setSinkId()` routes audio to a specific output device — falls back to default on failure
+- Only ONE sound plays at a time — `stopCurrentRef.current?.()` stops ALL audio elements
 - `playingId` state drives visual feedback on SoundCard and GroupCard
+- Virtual and monitor volumes are independent (0.0–1.0)
 
 ---
 
@@ -108,11 +128,13 @@ await audio.play()
 ## What NOT to do
 
 - **Do not import `electron` in renderer code** — it will crash. Use `window.electronAPI`.
-- **Do not bundle `electron-store`** — it is listed in `vite.config.ts` `external`. Keep it there.
+- **Do not bundle `electron-store` or `electron-log`** — both listed in `vite.config.ts` `external`.
 - **Do not add mic capture/passthrough via Web Audio** — tried, causes echo. Voice routing
   is handled at OS level (Windows mic monitoring → CABLE Input).
 - **Do not use `AudioContext.setSinkId()`** — less reliable in Electron than `HTMLAudioElement.setSinkId()`.
 - **Do not play audio inside the Zustand store** — keep playback in App.tsx only.
+- **Do not use `Get-WmiObject Win32_SoundDevice`** for VB-Cable detection — unreliable. Use `Get-PnpDevice`.
+- **Do not attempt `Restart-Service AudioSrv`** — fails on some Windows configs. Prompt user restart instead.
 
 ---
 
