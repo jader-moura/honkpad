@@ -5,7 +5,7 @@ export interface SoundEntry {
   name: string
   filePath: string
   hotkey: string | null
-  waveform?: Float32Array  // Downsampled waveform data (~100 points)
+  waveform?: number[]  // Downsampled waveform data (~100 points), stored as array
   duration?: number  // Duration in seconds
 }
 

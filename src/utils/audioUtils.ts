@@ -3,7 +3,7 @@
  */
 
 export interface WaveformData {
-  waveform: Float32Array
+  waveform: number[]
   duration: number
 }
 
@@ -38,14 +38,14 @@ export async function decodeAudioWaveform(filePath: string, samples: number = 10
     }
 
     return {
-      waveform: filteredData,
+      waveform: Array.from(filteredData),
       duration: audioBuffer.duration,
     }
   } catch (error) {
     console.error('[audioUtils] Failed to decode waveform:', error)
     // Return empty waveform on error
     return {
-      waveform: new Float32Array(100),
+      waveform: Array(100).fill(0),
       duration: 0,
     }
   }
@@ -63,7 +63,7 @@ export function getPlaybackProgress(audioElement: HTMLAudioElement): number {
 /**
  * Get amplitude at a specific progress point in the waveform
  */
-export function getWaveformAmplitudeAt(waveform: Float32Array | undefined, progress: number): number {
+export function getWaveformAmplitudeAt(waveform: number[] | undefined, progress: number): number {
   if (!waveform || waveform.length === 0) return 0
   const index = Math.floor(progress * (waveform.length - 1))
   return Math.max(0, Math.min(1, waveform[Math.floor(index)]))

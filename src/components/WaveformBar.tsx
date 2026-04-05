@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 interface WaveformBarProps {
-  waveform?: Float32Array
+  waveform?: number[]
   duration?: number
   progress?: number  // 0-1, for playback progress animation
   isPlaying?: boolean
