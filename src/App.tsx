@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setLanguage, type LanguageCode } from './i18n'
 import { useSoundsStore } from './hooks/useSounds'
+import { HonkpadLogo } from './components/HonkpadLogo'
 import { SoundCard } from './components/SoundCard'
 import { GroupCard } from './components/GroupCard'
 import { GroupModal } from './components/GroupModal'
@@ -623,8 +624,7 @@ export default function App() {
       {/* Titlebar */}
       <div className="titlebar">
         <div className="titlebar-drag">
-          <Music2 size={16} className="titlebar-icon" />
-          <span className="titlebar-title">Soundboard</span>
+          <HonkpadLogo className="titlebar-logo" />
         </div>
         <div className="titlebar-controls">
           <button onClick={() => window.electronAPI.minimizeWindow()} title={t('window.minimize')}><Minus size={12} /></button>

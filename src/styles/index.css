@@ -81,18 +81,15 @@ body,
 .titlebar-drag {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 0 8px;
 }
 
-.titlebar-icon {
-  color: var(--violet-lite);
-}
-
-.titlebar-title {
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: .03em;
-  color: var(--text);
+.titlebar-logo {
+  height: 32px;
+  width: auto;
+  max-width: 280px;
+  display: block;
 }
 
 .titlebar-controls {

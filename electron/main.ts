@@ -6,6 +6,8 @@ import https from 'https'
 import http from 'http'
 import Store from 'electron-store'
 import log from 'electron-log'
+import { getResourcesPath, getVBCableInstallerPath, isDev } from './pathUtils'
+import { initializeUpdater, checkForUpdates } from './updater'
 
 // ── Logging ────────────────────────────────────────────────────────────────────
 
@@ -104,6 +106,13 @@ function buildTrayMenu() {
     },
     { type: 'separator' },
     {
+      label: 'Verificar atualizações',
+      click: () => {
+        checkForUpdates()
+      },
+    },
+    { type: 'separator' },
+    {
       label: 'Sair',
       click: () => {
         isQuitting = true
@@ -115,7 +124,7 @@ function buildTrayMenu() {
 
 function createTray() {
   tray = new Tray(getTrayIcon())
-  tray.setToolTip('Soundboard — pronto')
+  tray.setToolTip('Honkpad — pronto')
   tray.setContextMenu(buildTrayMenu())
   tray.on('double-click', showWindow)
   log.info('[Tray] System tray icon created')
@@ -332,7 +341,7 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 520,
-    title: 'Soundboard',
+    title: 'Honkpad',
     backgroundColor: '#0d0d0f',
     frame: false,
     titleBarStyle: 'hidden',
@@ -364,6 +373,9 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  // Initialize auto-updater
+  initializeUpdater(mainWindow)
 }
 
 // ── IPC Handlers ──────────────────────────────────────────────────────────────

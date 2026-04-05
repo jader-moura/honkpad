@@ -1,0 +1,31 @@
+<svg width="480" height="300" viewBox="0 0 480 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="480" height="300" rx="24" fill="#0d0d0f"/>
+
+  <!-- icon mark -->
+  <rect x="170" y="28" width="140" height="140" rx="32" fill="#151518" stroke="rgba(124,58,237,0.45)" stroke-width="1.5"/>
+
+  <!-- soundwave bars -->
+  <rect x="196" y="76" width="12" height="44" rx="6" fill="#7c3aed"/>
+  <rect x="214" y="60" width="12" height="76" rx="6" fill="#9f67f5"/>
+  <rect x="232" y="48" width="12" height="100" rx="6" fill="#7c3aed"/>
+  <rect x="250" y="60" width="12" height="76" rx="6" fill="#9f67f5"/>
+  <rect x="268" y="76" width="12" height="44" rx="6" fill="#7c3aed"/>
+
+  <!-- horn arc -->
+  <path d="M214 63 Q240 38 266 63" fill="none" stroke="#9f67f5" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- wordmark -->
+  <text x="240" y="218" text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="52" font-weight="700" letter-spacing="-1.5"
+    fill="white">honk<tspan fill="#9f67f5">pad</tspan></text>
+
+  <!-- tagline -->
+  <text x="240" y="254" text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="15" font-weight="400" letter-spacing="0.5"
+    fill="rgba(255,255,255,0.35)">your sounds. one click.</text>
+
+  <!-- subtle divider -->
+  <line x1="160" y1="275" x2="320" y2="275" stroke="rgba(124,58,237,0.2)" stroke-width="0.5"/>
+</svg>

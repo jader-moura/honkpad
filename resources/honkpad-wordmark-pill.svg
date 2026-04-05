@@ -1,0 +1,8 @@
+<svg width="320" height="80" viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg">
+  <rect width="320" height="80" rx="20" fill="#151518"/>
+  <rect width="320" height="80" rx="20" fill="none" stroke="rgba(124,58,237,0.45)" stroke-width="1.5"/>
+  <text x="160" y="52" text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="34" font-weight="700" letter-spacing="-1"
+    fill="white">honk<tspan fill="#9f67f5">pad</tspan></text>
+</svg>
