@@ -5,6 +5,8 @@ export interface SoundEntry {
   name: string
   filePath: string
   hotkey: string | null
+  waveform?: Float32Array  // Downsampled waveform data (~100 points)
+  duration?: number  // Duration in seconds
 }
 
 export interface SoundGroup {

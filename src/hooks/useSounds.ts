@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { SoundEntry, SoundGroup } from '../types/global'
+import { decodeAudioWaveform } from '../utils/audioUtils'
 
 interface SoundsState {
   sounds: SoundEntry[]
@@ -38,12 +39,27 @@ export const useSoundsStore = create<SoundsState>((set, get) => ({
 
   addSounds: async (filePaths: string[]) => {
     const { sounds } = get()
-    const newSounds: SoundEntry[] = filePaths.map((fp) => ({
-      id: crypto.randomUUID(),
-      name: fp.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? fp,
-      filePath: fp,
-      hotkey: null,
-    }))
+    const newSounds: SoundEntry[] = await Promise.all(
+      filePaths.map(async (fp) => {
+        const entry: SoundEntry = {
+          id: crypto.randomUUID(),
+          name: fp.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? fp,
+          filePath: fp,
+          hotkey: null,
+        }
+
+        // Decode waveform in background
+        try {
+          const { waveform, duration } = await decodeAudioWaveform(fp, 100)
+          entry.waveform = waveform
+          entry.duration = duration
+        } catch (err) {
+          console.warn(`[useSounds] Failed to decode waveform for ${fp}:`, err)
+        }
+
+        return entry
+      })
+    )
     const updated = [...sounds, ...newSounds]
     set({ sounds: updated })
     persistSounds(updated)

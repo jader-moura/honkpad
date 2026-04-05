@@ -1,6 +1,7 @@
 import React from 'react'
 import { Play, Square, Keyboard, Trash2, Volume2 } from 'lucide-react'
 import { SoundEntry } from '../types/global'
+import { WaveformBar } from './WaveformBar'
 
 interface SoundCardProps {
   sound: SoundEntry
@@ -9,9 +10,18 @@ interface SoundCardProps {
   onRemove: (id: string) => void
   onHotkeyClick: (id: string) => void
   isPlaying: boolean
+  progress?: number  // 0-1 playback progress
 }
 
-export function SoundCard({ sound, onPlay, onStop, onRemove, onHotkeyClick, isPlaying }: SoundCardProps) {
+export function SoundCard({
+  sound,
+  onPlay,
+  onStop,
+  onRemove,
+  onHotkeyClick,
+  isPlaying,
+  progress = 0,
+}: SoundCardProps) {
   return (
     <div className={`sound-card ${isPlaying ? 'playing' : ''}`}>
       {isPlaying && <div className="playing-bar" />}
@@ -20,6 +30,18 @@ export function SoundCard({ sound, onPlay, onStop, onRemove, onHotkeyClick, isPl
         <Volume2 size={14} className="sound-icon" />
         <span>{sound.name}</span>
       </div>
+
+      {/* Waveform visualization */}
+      {(sound.waveform || sound.duration) && (
+        <div className="sound-card-waveform">
+          <WaveformBar
+            waveform={sound.waveform}
+            duration={sound.duration}
+            progress={isPlaying ? progress : 0}
+            isPlaying={isPlaying}
+          />
+        </div>
+      )}
 
       <button
         className={`play-btn ${isPlaying ? 'playing' : ''}`}

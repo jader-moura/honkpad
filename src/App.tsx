@@ -249,6 +249,32 @@ export default function App() {
 
   const stopCurrentRef = useRef<(() => void) | null>(null)
 
+  // ── Playback progress tracking ──
+  const [playbackProgress, setPlaybackProgress] = useState<number>(0)
+  const playbackAudioRef = useRef<HTMLAudioElement | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+
+  const updatePlaybackProgress = useCallback(() => {
+    if (playbackAudioRef.current && playingId) {
+      const { currentTime, duration } = playbackAudioRef.current
+      if (duration > 0) {
+        setPlaybackProgress(currentTime / duration)
+      }
+      animationFrameRef.current = requestAnimationFrame(updatePlaybackProgress)
+    }
+  }, [playingId])
+
+  useEffect(() => {
+    if (playingId) {
+      animationFrameRef.current = requestAnimationFrame(updatePlaybackProgress)
+    }
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [playingId, updatePlaybackProgress])
+
   useEffect(() => { load() }, [load])
 
   // ── VB-Cable check on launch ──
@@ -445,10 +471,17 @@ export default function App() {
       let done = false
       // Track "ended" on the monitor audio (primary tracking element)
       const primaryAudio = audioElements[audioElements.length - 1]
+
+      // Store reference for progress tracking
+      playbackAudioRef.current = primaryAudio
+      setPlaybackProgress(0)
+
       primaryAudio.addEventListener('ended', () => {
         if (!done) {
           done = true
           setPlayingId(null)
+          setPlaybackProgress(0)
+          playbackAudioRef.current = null
           stopCurrentRef.current = null
         }
       })
@@ -462,6 +495,8 @@ export default function App() {
             a.currentTime = 0
           }
           setPlayingId(null)
+          setPlaybackProgress(0)
+          playbackAudioRef.current = null
         }
       }
     } catch (err) {
@@ -474,6 +509,8 @@ export default function App() {
     stopCurrentRef.current?.()
     stopCurrentRef.current = null
     setPlayingId(null)
+    setPlaybackProgress(0)
+    playbackAudioRef.current = null
   }, [])
 
   // ── Play a random sound from a group ──────────────────────────────────────
@@ -681,6 +718,7 @@ export default function App() {
                     onRemove={removeSound}
                     onHotkeyClick={id => setModalSoundId(id)}
                     isPlaying={playingId === sound.id}
+                    progress={playingId === sound.id ? playbackProgress : 0}
                   />
                 ))}
               </div>

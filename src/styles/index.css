@@ -2168,3 +2168,41 @@ body,
   margin-top: -2px;
   padding: 0 4px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Waveform Visualization
+   ═══════════════════════════════════════════════════════════════ */
+
+.sound-card-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0;
+}
+
+.waveform-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.waveform-canvas {
+  flex: 1;
+  height: 32px;
+  cursor: default;
+  transition: opacity var(--transition);
+}
+
+.waveform-canvas.playing {
+  opacity: 1;
+}
+
+.waveform-duration {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 500;
+  min-width: 28px;
+  text-align: right;
+}
