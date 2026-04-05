@@ -2170,6 +2170,45 @@ body,
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   Language Selector
+   ═══════════════════════════════════════════════════════════════ */
+
+.language-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.language-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.language-select {
+  padding: 9px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.language-select:hover,
+.language-select:focus {
+  border-color: var(--violet);
+  background: rgba(124, 58, 237, .06);
+  outline: none;
+}
+
+.language-select option {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    Waveform Visualization
    ═══════════════════════════════════════════════════════════════ */
 

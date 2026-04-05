@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { setLanguage, type LanguageCode } from './i18n'
 import { useSoundsStore } from './hooks/useSounds'
 import { SoundCard } from './components/SoundCard'
 import { GroupCard } from './components/GroupCard'
@@ -83,7 +85,7 @@ function DevicePicker({ devices, selectedId, onSelect, label, icon, accentClass 
         title={label}
       >
         {icon}
-        <span className="device-label">{selected?.label ?? 'Padrão do sistema'}</span>
+        <span className="device-label">{selected?.label ?? t('audio.systemDefault')}</span>
         <ChevronDown size={12} className={`chevron ${open ? 'rotated' : ''}`} />
       </button>
 
@@ -94,7 +96,7 @@ function DevicePicker({ devices, selectedId, onSelect, label, icon, accentClass 
             className={`device-menu-item ${!selectedId ? 'active' : ''}`}
             onClick={() => { onSelect(null); setOpen(false) }}
           >
-            Padrão do sistema
+            {t('audio.systemDefault')}
           </button>
           {devices.map(d => (
             <button
@@ -195,6 +197,7 @@ function MicPicker({ devices, selectedId, onSelect }: MicPickerProps) {
 type Tab = 'sounds' | 'groups' | 'settings'
 
 export default function App() {
+  const { t } = useTranslation()
   const { sounds, groups, loaded, load, addSounds, removeSound, setHotkey,
     addGroup, removeGroup, updateGroup } = useSoundsStore()
 
@@ -624,9 +627,9 @@ export default function App() {
           <span className="titlebar-title">Soundboard</span>
         </div>
         <div className="titlebar-controls">
-          <button onClick={() => window.electronAPI.minimizeWindow()} title="Minimizar"><Minus size={12} /></button>
-          <button onClick={() => window.electronAPI.maximizeWindow()} title="Maximizar"><Square size={11} /></button>
-          <button onClick={() => window.electronAPI.closeWindow()} className="close-btn" title="Fechar"><X size={12} /></button>
+          <button onClick={() => window.electronAPI.minimizeWindow()} title={t('window.minimize')}><Minus size={12} /></button>
+          <button onClick={() => window.electronAPI.maximizeWindow()} title={t('window.maximize')}><Square size={11} /></button>
+          <button onClick={() => window.electronAPI.closeWindow()} className="close-btn" title={t('window.close')}><X size={12} /></button>
         </div>
       </div>
 
@@ -647,21 +650,21 @@ export default function App() {
                 className={`tab-btn ${tab === 'sounds' ? 'active' : ''}`}
                 onClick={() => setTab('sounds')}
               >
-                <Music2 size={13} /> Sons
+                <Music2 size={13} /> {t('tab.sounds')}
                 {sounds.length > 0 && <span className="count">{sounds.length}</span>}
               </button>
               <button
                 className={`tab-btn ${tab === 'groups' ? 'active' : ''}`}
                 onClick={() => setTab('groups')}
               >
-                <Layers size={13} /> Grupos
+                <Layers size={13} /> {t('tab.groups')}
                 {groups.length > 0 && <span className="count">{groups.length}</span>}
               </button>
               <button
                 className={`tab-btn ${tab === 'settings' ? 'active' : ''}`}
                 onClick={() => setTab('settings')}
               >
-                <Settings size={13} /> Configurações
+                <Settings size={13} /> {t('tab.settings')}
               </button>
             </div>
 
@@ -669,19 +672,19 @@ export default function App() {
               <button
                 className={`stop-all-btn ${playingId ? 'playing' : ''}`}
                 onClick={stopSound}
-                title={`Parar todos os sons${stopHotkey ? ` (${stopHotkey})` : ''}`}
+                title={`${t('button.stopAll')}${stopHotkey ? ` (${stopHotkey})` : ''}`}
                 disabled={!playingId}
               >
                 <StopCircle size={15} />
               </button>
               {tab === 'sounds' && (
                 <button className="btn-primary" onClick={() => setShowImportModal(true)}>
-                  <FolderOpen size={15} /> Importar Áudios
+                  <FolderOpen size={15} /> {t('button.importAudios')}
                 </button>
               )}
               {tab === 'groups' && (
                 <button className="btn-primary" onClick={handleCreateGroup}>
-                  <Plus size={15} /> Novo Grupo
+                  <Plus size={15} /> {t('button.newGroup')}
                 </button>
               )}
             </div>
@@ -698,7 +701,7 @@ export default function App() {
             <Search size={13} className="search-icon" />
             <input
               className="search-input"
-              placeholder="Buscar sons…"
+              placeholder={t('search.placeholder')}
               value={soundSearch}
               onChange={e => setSoundSearch(e.target.value)}
             />
@@ -725,16 +728,16 @@ export default function App() {
             )
             : (
               <div className="tab-empty">
-                <p>Nenhum som encontrado para "<strong>{soundSearch}</strong>".</p>
+                <p>{t('sounds.searchEmpty', { query: soundSearch })}</p>
               </div>
             )
         })()}
 
         {loaded && tab === 'sounds' && sounds.length === 0 && hasContent && (
           <div className="tab-empty">
-            <p>Nenhum som importado.</p>
+            <p>{t('sound.empty')}</p>
             <button className="btn-primary" onClick={() => setShowImportModal(true)}>
-              <FolderOpen size={15} /> Importar Áudios
+              <FolderOpen size={15} /> {t('button.importAudios')}
             </button>
           </div>
         )}
@@ -758,9 +761,9 @@ export default function App() {
 
         {loaded && tab === 'groups' && groups.length === 0 && hasContent && (
           <div className="tab-empty">
-            <p>Nenhum grupo criado ainda.</p>
+            <p>{t('group.empty')}</p>
             <button className="btn-primary" onClick={handleCreateGroup}>
-              <Plus size={15} /> Novo Grupo
+              <Plus size={15} /> {t('button.newGroup')}
             </button>
           </div>
         )}
@@ -770,15 +773,15 @@ export default function App() {
           <div className="settings-page">
             <div className="settings-section">
               <div className="settings-section-title">
-                <Cable size={14} /> Roteamento de Áudio
+                <Cable size={14} /> {t('audio.routing')}
               </div>
               <div className="dual-device-bar">
                 {/* Mic Input */}
                 <div className="dual-device-channel">
                   <div className="channel-header">
                     {micPassthroughActive ? <Mic size={13} /> : <MicOff size={13} />}
-                    <span>Seu Microfone</span>
-                    {micPassthroughActive && <span className="badge-sm badge-active">Ativo</span>}
+                    <span>{t('audio.yourMic')}</span>
+                    {micPassthroughActive && <span className="badge-sm badge-active">{t('audio.cableAuto')}</span>}
                   </div>
                   <div className="device-selector" onClick={e => e.stopPropagation()}>
                     <MicPicker
@@ -789,7 +792,7 @@ export default function App() {
                   </div>
                   {!micDeviceId && (
                     <div className="channel-hint">
-                      Selecione seu mic para que sua voz passe pelo CABLE junto com os sons.
+                      {t('audio.micLabel')}
                     </div>
                   )}
                 </div>
@@ -800,18 +803,18 @@ export default function App() {
                 <div className="dual-device-channel">
                   <div className="channel-header">
                     <Cable size={13} />
-                    <span>Saída Virtual</span>
-                    {hasCableInput && <span className="badge-sm">Auto</span>}
+                    <span>{t('audio.cable')}</span>
+                    {hasCableInput && <span className="badge-sm">{t('audio.cableAuto')}</span>}
                   </div>
                   <DevicePicker
                     devices={outputs}
                     selectedId={cableInputDeviceId}
                     onSelect={setCableInputDeviceId}
-                    label="Saída Virtual (CABLE Input)"
+                    label={t('audio.cableSetup')}
                     icon={<Cable size={13} />}
                     accentClass="cable-accent"
                   />
-                  <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label="Volume Virtual" />
+                  <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label={t('audio.volumeVirtual')} />
                 </div>
 
                 <div className="dual-device-divider" />
@@ -820,16 +823,16 @@ export default function App() {
                 <div className="dual-device-channel">
                   <div className="channel-header">
                     <Monitor size={13} />
-                    <span>Monitor (Você)</span>
+                    <span>{t('audio.monitor')}</span>
                   </div>
                   <DevicePicker
                     devices={outputs}
                     selectedId={monitorDeviceId}
                     onSelect={setMonitorDeviceId}
-                    label="Monitor (Seus fones/caixas)"
+                    label={t('audio.monitorLabel')}
                     icon={<Volume2 size={13} />}
                   />
-                  <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label="Volume Monitor" />
+                  <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label={t('audio.volumeMonitor')} />
                 </div>
               </div>
             </div>
@@ -837,24 +840,24 @@ export default function App() {
             {/* Stop All Hotkey Settings */}
             <div className="settings-section">
               <div className="settings-section-title">
-                <Keyboard size={14} /> Parar Todos (Hotkey)
+                <Keyboard size={14} /> {t('hotkey.stopAll')}
               </div>
               <div className="hotkey-setting">
-                <label className="hotkey-label">Atalho para parar todos os sons</label>
+                <label className="hotkey-label">{t('hotkey.label')}</label>
                 <div className="hotkey-row">
                   <span className={`hotkey-badge ${stopHotkey ? 'assigned' : 'unassigned'}`}>
                     <Keyboard size={12} />
-                    <span>{stopHotkey || 'Nenhuma'}</span>
+                    <span>{stopHotkey || t('hotkey.unassigned')}</span>
                   </span>
                   <button
                     className="btn-secondary"
                     onClick={() => setCapturingStopHotkey(true)}
                   >
-                    {stopHotkey ? 'Alterar' : 'Definir hotkey'}
+                    {stopHotkey ? t('button.change') : t('button.setHotkey')}
                   </button>
                   {stopHotkey && (
                     <button className="btn-ghost" onClick={handleRemoveStopHotkey}>
-                      Remover
+                      {t('button.remove')}
                     </button>
                   )}
                 </div>
@@ -865,19 +868,38 @@ export default function App() {
                       {capturingStopHotkey && <div className="pulse-ring" />}
                       {capturedStopKeys.length > 0
                         ? <span className="captured-key">{formatHotkeyDisplay(capturedStopKeys)}</span>
-                        : <span className="capture-hint">Pressione as teclas…</span>
+                        : <span className="capture-hint">{t('hotkey.capture')}</span>
                       }
                     </div>
                     <div className="hotkey-actions">
                       <button className="btn-ghost" onClick={() => { setCapturingStopHotkey(false); setCapturedStopKeys([]) }}>
-                        Cancelar
+                        {t('button.cancel')}
                       </button>
                       <button className="btn-primary" onClick={handleConfirmStopHotkey} disabled={capturedStopKeys.length === 0}>
-                        Confirmar
+                        {t('button.confirm')}
                       </button>
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Language Settings */}
+            <div className="settings-section">
+              <div className="settings-section-title">
+                <Music2 size={14} /> Language
+              </div>
+              <div className="language-selector">
+                <label className="language-label">Select language</label>
+                <select
+                  className="language-select"
+                  defaultValue={localStorage.getItem('sdb_language') || 'pt-BR'}
+                  onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                >
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="en-US">English (US)</option>
+                  <option value="es-ES">Español (España)</option>
+                </select>
               </div>
             </div>
           </div>
