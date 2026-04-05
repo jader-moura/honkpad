@@ -43,7 +43,7 @@
   "audio.yourMic": "Tu Micrófono",
   "audio.micLabel": "Selecciona tu micrófono para que tu voz pase por CABLE con los sonidos.",
   "audio.micNone": "Ninguno (voz desactivada)",
-  "audio.micHint": "Tu voz se enrutará a través de CABLE junto con los sonidos del soundboard.",
+  "audio.micHint": "Tu voz se enrutará a través de CABLE junto con los sonidos del honkpad.",
   "audio.systemDefault": "Por Defecto del Sistema",
   "audio.volume": "Volumen",
   "audio.volumeVirtual": "Volumen Virtual",

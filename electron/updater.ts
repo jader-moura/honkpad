@@ -42,7 +42,7 @@ export function initializeUpdater(window: BrowserWindow): void {
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: 'Update Available',
-      message: `Soundboard ${info.version} is available`,
+      message: `Honkpad ${info.version} is available`,
       detail: 'Do you want to download and install it now?',
       buttons: ['Update', 'Later'],
     }).then((result) => {

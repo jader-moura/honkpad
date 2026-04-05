@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   Soundboard – Global Styles
+   Honkpad – Global Styles
    Dark glassmorphism + violet accent
 ───────────────────────────────────────────────────────────── */
 
@@ -1198,7 +1198,9 @@ body,
   transition: background var(--transition), color var(--transition);
 }
 
-.import-tab:hover { color: var(--text); }
+.import-tab:hover {
+  color: var(--text);
+}
 
 .import-tab.active {
   background: var(--surface3);
@@ -1260,7 +1262,9 @@ body,
   transition: background var(--transition);
 }
 
-.import-result-row:hover { background: var(--surface2); }
+.import-result-row:hover {
+  background: var(--surface2);
+}
 
 .import-result-name {
   flex: 1;
@@ -1298,10 +1302,19 @@ body,
   color: var(--violet-lite);
 }
 
-.import-add-btn:disabled { cursor: default; }
+.import-add-btn:disabled {
+  cursor: default;
+}
 
-@keyframes spin { to { transform: rotate(360deg); } }
-.spin { animation: spin 0.7s linear infinite; }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.7s linear infinite;
+}
 
 /* ── Stop All Button ─────────────────────────────────────────── */
 .stop-all-btn {
@@ -1412,9 +1425,19 @@ body,
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 0.5; }
-  50% { opacity: 0.3; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 
 .captured-key {
@@ -1715,8 +1738,13 @@ body,
 }
 
 @keyframes progress-slide {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(350%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
 }
 
 .vbcable-error-detail {
@@ -1990,8 +2018,13 @@ body,
 }
 
 @keyframes debug-slide-in {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 .debug-header {

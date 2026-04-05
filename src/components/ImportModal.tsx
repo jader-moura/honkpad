@@ -61,7 +61,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
       : `https://www.myinstants.com${result.mp3Url}`
     const audio = new Audio(url)
     audio.addEventListener('ended', () => setPreviewingSlug(null))
-    audio.play().catch(() => {})
+    audio.play().catch(() => { })
     previewAudioRef.current = audio
     setPreviewingSlug(result.slug)
   }
@@ -154,7 +154,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
                         className={`import-add-btn ${state === 'added' ? 'added' : ''}`}
                         onClick={() => state === 'idle' && handleAdd(r)}
                         disabled={state !== 'idle'}
-                        title="Adicionar ao Soundboard"
+                        title="Adicionar ao Honkpad"
                       >
                         {state === 'downloading' && <Loader size={13} className="spin" />}
                         {state === 'added' && <Check size={13} />}

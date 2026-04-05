@@ -5,8 +5,8 @@
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/91.0.4472.124 Safari/537.36\" \"https://www.myinstants.com/en/instant/hello-there-obi-wan-39670/\")",
       "Read(//tmp/**)",
       "Bash(npm install:*)",
-      "Bash(mkdir -p \"C:\\\\Users\\\\USER\\\\development\\\\soundboard\\\\src\\\\assets\")",
-      "Bash(cp \"C:\\\\Users\\\\USER\\\\development\\\\soundboard\\\\resources\\\\honkpad-inline.svg\" \"C:\\\\Users\\\\USER\\\\development\\\\soundboard\\\\src\\\\assets\\\\honkpad-inline.svg\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\src\\\\assets\")",
+      "Bash(cp \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\resources\\\\honkpad-inline.svg\" \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\src\\\\assets\\\\honkpad-inline.svg\")",
       "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
       "mcp__plugin_context-mode_context-mode__ctx_execute"
     ]

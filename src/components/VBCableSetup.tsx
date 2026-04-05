@@ -134,7 +134,7 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
               <strong> reiniciar o computador</strong>.
             </p>
             <p className="vbcable-subdesc">
-              Após reiniciar, abra o Soundboard novamente e tudo estará configurado automaticamente.
+              Após reiniciar, abra o Honkpad novamente e tudo estará configurado automaticamente.
             </p>
             <button className="btn-primary large" onClick={() => onComplete()}>
               Entendi — vou reiniciar depois

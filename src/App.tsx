@@ -185,7 +185,7 @@ function MicPicker({ devices, selectedId, onSelect }: MicPickerProps) {
             </button>
           ))}
           <div className="device-menu-hint">
-            Sua voz será encaminhada pelo CABLE junto com os sons do soundboard.
+            Sua voz será encaminhada pelo CABLE junto com os sons do honkpad.
           </div>
         </div>
       )}
@@ -307,7 +307,7 @@ export default function App() {
   useEffect(() => {
     async function loadDevices() {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => {})
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => { })
         const all = await navigator.mediaDevices.enumerateDevices()
 
         // Output devices
@@ -450,7 +450,7 @@ export default function App() {
             const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
             if (setSink) await setSink.call(audio, deviceId)
           } catch (err) {
-            console.warn('[Soundboard] setSinkId failed for device:', deviceId, err)
+            console.warn('[Honkpad] setSinkId failed for device:', deviceId, err)
             // Fall through — play through default device instead of failing
           }
         }
@@ -504,7 +504,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.error('[Soundboard] Play failed:', err, sound.filePath)
+      console.error('[Honkpad] Play failed:', err, sound.filePath)
       setPlayingId(null)
     }
   }, [cableInputDeviceId, monitorDeviceId, virtualVolume, monitorVolume])

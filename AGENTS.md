@@ -1,4 +1,4 @@
-# AGENTS.md — AI Assistant Context for Soundboard
+# AGENTS.md — AI Assistant Context for Honkpad
 
 This file gives AI coding assistants immediate, accurate context about this project.
 Read this before making any changes.
@@ -7,7 +7,7 @@ Read this before making any changes.
 
 ## What this project is
 
-A Windows desktop soundboard app (Electron + React + TypeScript) for streamers/gamers.
+A Windows desktop honkpad app (Electron + React + TypeScript) for streamers/gamers.
 Users import audio files, assign global hotkeys, and play sounds instantly — with audio
 routed to a virtual cable device so others on calls/games hear the sounds via microphone.
 

@@ -1,7 +1,7 @@
 {
   "name": "honkpad",
   "version": "1.0.0",
-  "description": "Honkpad – Live Audio Soundboard",
+  "description": "Honkpad – Live Audio Honkpad",
   "main": "dist-electron/main.js",
   "author": "Jader Moura",
   "private": true,
@@ -10,7 +10,7 @@
     "build": "vite build && electron-builder"
   },
   "build": {
-    "appId": "com.soundboard.app",
+    "appId": "com.honkpad.app",
     "productName": "Honkpad",
     "directories": {
       "buildResources": "resources",

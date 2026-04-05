@@ -12,7 +12,7 @@ export function EmptyState({ onImport }: EmptyStateProps) {
         <Music2 size={48} />
       </div>
       <h2>Nenhum som ainda</h2>
-      <p>Importe arquivos de áudio para começar sua soundboard.</p>
+      <p>Importe arquivos de áudio para começar sua honkpad.</p>
       <button className="btn-primary large" onClick={onImport}>
         + Importar Áudios
       </button>

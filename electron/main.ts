@@ -572,7 +572,7 @@ ipcMain.on('window-close', () => mainWindow?.hide())
 // ── Tray IPC ───────────────────────────────────────────────────────────────────
 
 ipcMain.on('tray-update-status', (_, isPlaying: boolean) => {
-  tray?.setToolTip(isPlaying ? 'Soundboard — 1 som tocando' : 'Soundboard — pronto')
+  tray?.setToolTip(isPlaying ? 'Honkpad — 1 som tocando' : 'Honkpad — pronto')
 })
 
 // ── App Lifecycle ──────────────────────────────────────────────────────────────

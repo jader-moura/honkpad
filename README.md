@@ -1,6 +1,6 @@
-# Soundboard
+# Honkpad
 
-A desktop soundboard application for streamers and gamers built with **Electron + React + TypeScript**. Plays audio files instantly via configurable global hotkeys, routes audio to any output device (including virtual cables like VB-CABLE), and supports grouped sounds with random playback.
+A desktop honkpad application for streamers and gamers built with **Electron + React + TypeScript**. Plays audio files instantly via configurable global hotkeys, routes audio to any output device (including virtual cables like VB-CABLE), and supports grouped sounds with random playback.
 
 ---
 
@@ -49,7 +49,7 @@ A desktop soundboard application for streamers and gamers built with **Electron 
 ## Project Structure
 
 ```
-soundboard/
+honkpad/
 ├── electron/
 │   ├── main.ts          # Electron main process: window, IPC, global hotkeys, persistence
 │   └── preload.ts       # Context bridge — exposes safe electronAPI to renderer
@@ -219,15 +219,15 @@ Only output devices are enumerated. Stereo Mix (if present) is auto-detected by 
 
 ### Routing to a virtual mic (VB-CABLE)
 
-To make soundboard audio audible in games/Discord/OBS **without third-party software beyond VB-CABLE**:
+To make honkpad audio audible in games/Discord/OBS **without third-party software beyond VB-CABLE**:
 
 ```
-Soundboard app  →  Output: CABLE Input (VB-Audio)
+Honkpad app  →  Output: CABLE Input (VB-Audio)
                         ↓
                    CABLE Output  →  set as microphone in game/Discord
 ```
 
-For voice passthrough alongside soundboard sounds:
+For voice passthrough alongside honkpad sounds:
 ```
 HyperX mic  →  mmsys.cpl → Recording → HyperX Properties
                 → Listen tab → "Listen to this device"
@@ -268,7 +268,7 @@ All hotkeys are re-registered whenever sounds or groups are saved.
 ### Install & run
 
 ```bash
-cd soundboard
+cd honkpad
 npm install
 npm run dev
 ```

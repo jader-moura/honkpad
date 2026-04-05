@@ -26,7 +26,7 @@ export function ConflictWarning({ conflict, onDismiss }: ConflictWarningProps) {
             ))}
           </ul>
           <span className="conflict-hint">
-            Para evitar problemas, configure uma entrada de áudio separada para o Soundboard.
+            Para evitar problemas, configure uma entrada de áudio separada para o Honkpad.
           </span>
         </div>
       </div>

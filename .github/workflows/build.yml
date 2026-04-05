@@ -35,15 +35,15 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: soundboard-installer
-          path: dist/Soundboard*.exe
+          name: honkpad-installer
+          path: dist/Honkpad*.exe
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/Soundboard*.exe
+          files: dist/Honkpad*.exe
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
         env:
