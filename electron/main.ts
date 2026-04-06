@@ -62,8 +62,12 @@ let isQuitting = false
 
 function getTrayIcon(): Electron.NativeImage {
   const candidates = [
+    join(app.getAppPath(), 'resources', 'icon.ico'),
+    join(app.getAppPath(), 'resources', 'honkpad-icon-256.png'),
     join(app.getAppPath(), 'public', 'icon.ico'),
     join(app.getAppPath(), 'public', 'icon.png'),
+    join(__dirname, '..', 'resources', 'icon.ico'),
+    join(__dirname, '..', 'resources', 'honkpad-icon-256.png'),
     join(__dirname, '..', 'public', 'icon.ico'),
     join(__dirname, '..', 'public', 'icon.png'),
   ]
