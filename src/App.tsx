@@ -75,14 +75,33 @@ interface DevicePickerProps {
 }
 
 function DevicePicker({ devices, selectedId, onSelect, label, icon, accentClass }: DevicePickerProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const selected = devices.find(d => d.deviceId === selectedId)
+
+  const handleOpen = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const selectorRect = buttonRef.current.parentElement?.getBoundingClientRect()
+      console.log('[DevicePicker] Opening menu', { rect, selectorRect, open })
+      if (selectorRect) {
+        setMenuPos({
+          top: rect.height + 8, // Relative to parent
+          left: rect.left - selectorRect.left,
+        })
+      }
+    }
+    setOpen(v => !v)
+  }
 
   return (
     <div className="device-selector" onClick={e => e.stopPropagation()}>
       <button
+        ref={buttonRef}
         className={`device-btn ${open ? 'open' : ''} ${selectedId ? 'active' : ''} ${accentClass || ''}`}
-        onClick={() => setOpen(v => !v)}
+        onClick={handleOpen}
         title={label}
       >
         {icon}
@@ -91,7 +110,7 @@ function DevicePicker({ devices, selectedId, onSelect, label, icon, accentClass 
       </button>
 
       {open && (
-        <div className="device-menu">
+        <div className="device-menu" style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}>
           <div className="device-menu-header">{label}</div>
           <button
             className={`device-menu-item ${!selectedId ? 'active' : ''}`}
@@ -246,6 +265,20 @@ export default function App() {
   const [conflictDismissed, setConflictDismissed] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
 
+  // ── Debug helpers ──
+  useEffect(() => {
+    (window as any).debugHonkpad = {
+      resetVBCableFlag: async () => {
+        await window.electronAPI.setVBCableFlag(false)
+        window.location.reload()
+      },
+      showVBCableSetup: () => setShowVBCableSetup(true),
+      hideVBCableSetup: () => setShowVBCableSetup(false),
+      getVBCableFlag: async () => await window.electronAPI.getVBCableFlag(),
+    }
+    console.log('Debug helpers available: window.debugHonkpad')
+  }, [])
+
   // ── Stop hotkey settings ──
   const [stopHotkey, setStopHotkeyState] = useState('Ctrl+Shift+S')
   const [capturingStopHotkey, setCapturingStopHotkey] = useState(false)
@@ -286,7 +319,9 @@ export default function App() {
     async function initVBCable() {
       try {
         const alreadyChecked = await window.electronAPI.getVBCableFlag()
+        console.log('[VBCable] Flag check result:', alreadyChecked)
         if (!alreadyChecked) {
+          console.log('[VBCable] Showing setup overlay')
           setShowVBCableSetup(true)
           return
         }
@@ -296,7 +331,8 @@ export default function App() {
         // Check for conflicts
         const conflictResult = await window.electronAPI.detectConflicts()
         setConflict(conflictResult)
-      } catch {
+      } catch (err) {
+        console.error('[VBCable] Error:', err)
         // silently continue
       }
     }
@@ -799,21 +835,19 @@ export default function App() {
 
                 <div className="dual-device-divider" />
 
-                {/* Virtual Output (CABLE Input) */}
+                {/* Virtual Output (CABLE Input - Fixed) */}
                 <div className="dual-device-channel">
                   <div className="channel-header">
                     <Cable size={13} />
                     <span>{t('audio.cable')}</span>
                     {hasCableInput && <span className="badge-sm">{t('audio.cableAuto')}</span>}
                   </div>
-                  <DevicePicker
-                    devices={outputs}
-                    selectedId={cableInputDeviceId}
-                    onSelect={setCableInputDeviceId}
-                    label={t('audio.cableSetup')}
-                    icon={<Cable size={13} />}
-                    accentClass="cable-accent"
-                  />
+                  <div className="device-btn cable-fixed" title={t('audio.cableSetup')}>
+                    <Cable size={13} />
+                    <span className="device-label">
+                      {outputs.find(d => d.deviceId === cableInputDeviceId)?.label || 'CABLE Input'}
+                    </span>
+                  </div>
                   <VolumeSlider value={virtualVolume} onChange={setVirtualVolume} label={t('audio.volumeVirtual')} />
                 </div>
 

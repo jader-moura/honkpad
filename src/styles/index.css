@@ -129,6 +129,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: var(--background);
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
@@ -228,6 +229,18 @@ body,
   background: var(--violet-bg);
 }
 
+.device-btn.cable-fixed {
+  cursor: default;
+  border-color: rgba(124, 58, 237, .3);
+  background: var(--violet-bg);
+  color: var(--text);
+}
+
+.device-btn.cable-fixed:hover {
+  border-color: rgba(124, 58, 237, .3);
+  background: var(--violet-bg);
+}
+
 .device-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -246,15 +259,13 @@ body,
 
 .device-menu {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
   min-width: 280px;
   max-width: 360px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 16px 48px rgba(0, 0, 0, .5), 0 0 0 1px rgba(124, 58, 237, .08);
-  z-index: 500;
+  z-index: 9999;
   overflow: hidden;
   animation: modal-in .15s cubic-bezier(.34, 1.56, .64, 1);
 }
@@ -1861,6 +1872,7 @@ body,
   gap: 24px;
   padding: 4px 0 16px;
   overflow-y: auto;
+  background: var(--background);
 }
 
 .settings-section {

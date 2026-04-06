@@ -1,13 +1,14 @@
 {
   "name": "honkpad",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Honkpad – Live Audio Honkpad",
   "main": "dist-electron/main.js",
   "author": "Jader Moura",
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build && electron-builder"
+    "build": "vite build && electron-builder",
+    "build:clean": "npm version patch --no-git-tag-version && rmdir /s /q dist dist-electron 2>nul || true && npm run build"
   },
   "build": {
     "appId": "com.honkpad.app",
@@ -37,7 +38,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "uninstallerIcon": "resources/icon.ico"
     },
     "extraResources": [
       {

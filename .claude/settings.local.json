@@ -8,7 +8,11 @@
       "Bash(mkdir -p \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\src\\\\assets\")",
       "Bash(cp \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\resources\\\\honkpad-inline.svg\" \"C:\\\\Users\\\\USER\\\\development\\\\honkpad\\\\src\\\\assets\\\\honkpad-inline.svg\")",
       "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
-      "mcp__plugin_context-mode_context-mode__ctx_execute"
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "Bash(taskkill /IM honkpad.exe /F)",
+      "Bash(npm run:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file",
+      "mcp__plugin_context-mode_context-mode__ctx_search"
     ]
   }
 }
