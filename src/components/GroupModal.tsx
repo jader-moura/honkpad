@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { X, Plus, Trash2, Keyboard, Play, Square, Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { SoundEntry, SoundGroup } from '../types/global'
 
 function toFileUrl(p: string): string {
@@ -17,6 +18,7 @@ interface GroupModalProps {
 type ModalStep = 'edit' | 'hotkey'
 
 export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProps) {
+    const { t } = useTranslation()
     const [name, setName] = useState(group.name)
     const [soundIds, setSoundIds] = useState<string[]>(group.soundIds)
     const [hotkey, setHotkey] = useState<string | null>(group.hotkey)
@@ -117,16 +119,16 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
 
                 {step === 'edit' && (
                     <>
-                        <h2 className="modal-title">Editar Grupo</h2>
+                        <h2 className="modal-title">{t('group.editTitle')}</h2>
 
                         {/* Name */}
                         <div className="group-modal-field">
-                            <label className="group-modal-label">Nome do grupo</label>
+                            <label className="group-modal-label">{t('group.groupName')}</label>
                             <input
                                 className="group-name-input"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
-                                placeholder="Ex: Áudios de zuação"
+                                placeholder={t('group.namePlaceholder')}
                                 maxLength={40}
                                 autoFocus
                             />
@@ -134,26 +136,26 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
 
                         {/* Hotkey */}
                         <div className="group-modal-field">
-                            <label className="group-modal-label">Hotkey do grupo</label>
+                            <label className="group-modal-label">{t('group.hotkeyLabel')}</label>
                             <div className="group-hotkey-row">
                                 <span className={`hotkey-badge ${hotkey ? 'assigned' : 'unassigned'}`} style={{ cursor: 'default' }}>
                                     <Keyboard size={12} />
-                                    <span>{hotkey ?? 'Nenhuma'}</span>
+                                    <span>{hotkey ?? t('hotkey.unassigned')}</span>
                                 </span>
                                 <button className="btn-secondary" onClick={() => { setStep('hotkey'); setListening(true) }}>
-                                    {hotkey ? 'Alterar' : 'Definir hotkey'}
+                                    {hotkey ? t('button.change') : t('button.setHotkey')}
                                 </button>
                                 {hotkey && (
-                                    <button className="btn-ghost" onClick={() => setHotkey(null)}>Remover</button>
+                                    <button className="btn-ghost" onClick={() => setHotkey(null)}>{t('button.remove')}</button>
                                 )}
                             </div>
                         </div>
 
                         {/* Sounds in group */}
                         <div className="group-modal-field">
-                            <label className="group-modal-label">Sons no grupo ({inGroup.length})</label>
+                            <label className="group-modal-label">{t('group.soundsInGroup', { count: inGroup.length })}</label>
                             {inGroup.length === 0 && (
-                                <p className="group-empty-hint">Nenhum som adicionado ainda.</p>
+                                <p className="group-empty-hint">{t('group.noSoundsAddedYet')}</p>
                             )}
                             <div className="group-sound-list">
                                 {inGroup.map(s => (
@@ -161,12 +163,12 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
                                         <button
                                             className={`preview-btn ${previewingId === s.id ? 'previewing' : ''}`}
                                             onClick={() => togglePreview(s)}
-                                            title={previewingId === s.id ? 'Parar' : 'Ouvir'}
+                                            title={previewingId === s.id ? t('group.previewStop') : t('group.previewPlay')}
                                         >
                                             {previewingId === s.id ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
                                         </button>
                                         <span className="group-sound-name">{s.name}</span>
-                                        <button className="remove-btn" onClick={() => handleRemoveSound(s.id)} title="Remover do grupo">
+                                        <button className="remove-btn" onClick={() => handleRemoveSound(s.id)} title={t('group.removeFromGroup')}>
                                             <Trash2 size={13} />
                                         </button>
                                     </div>
@@ -177,12 +179,12 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
                         {/* Available sounds to add */}
                         {available.length > 0 && (
                             <div className="group-modal-field">
-                                <label className="group-modal-label">Adicionar sons</label>
+                                <label className="group-modal-label">{t('group.addSounds')}</label>
                                 <div className="search-box">
                                     <Search size={13} className="search-icon" />
                                     <input
                                         className="search-input"
-                                        placeholder="Buscar sons…"
+                                        placeholder={t('search.placeholder')}
                                         value={availableSearch}
                                         onChange={e => setAvailableSearch(e.target.value)}
                                     />
@@ -194,33 +196,33 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
                                                 <button
                                                     className={`preview-btn ${previewingId === s.id ? 'previewing' : ''}`}
                                                     onClick={() => togglePreview(s)}
-                                                    title={previewingId === s.id ? 'Parar' : 'Ouvir'}
+                                                    title={previewingId === s.id ? t('group.previewStop') : t('group.previewPlay')}
                                                 >
                                                     {previewingId === s.id ? <Square size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
                                                 </button>
                                                 <span className="group-sound-name">{s.name}</span>
-                                                <button className="add-btn" onClick={() => handleAddSound(s.id)} title="Adicionar ao grupo">
+                                                <button className="add-btn" onClick={() => handleAddSound(s.id)} title={t('group.addToGroup')}>
                                                     <Plus size={13} />
                                                 </button>
                                             </div>
                                         ))
-                                        : <p className="group-empty-hint">Nenhum som encontrado.</p>
+                                        : <p className="group-empty-hint">{t('group.noSoundsFound')}</p>
                                     }
                                 </div>
                             </div>
                         )}
 
                         <div className="modal-actions">
-                            <button className="btn-ghost" onClick={onClose}>Cancelar</button>
-                            <button className="btn-primary" onClick={handleSave}>Salvar grupo</button>
+                            <button className="btn-ghost" onClick={onClose}>{t('button.cancel')}</button>
+                            <button className="btn-primary" onClick={handleSave}>{t('group.saveGroup')}</button>
                         </div>
                     </>
                 )}
 
                 {step === 'hotkey' && (
                     <>
-                        <h2 className="modal-title">Definir Hotkey</h2>
-                        <p className="modal-subtitle">Pressione a combinação de teclas para o grupo <strong>{name || group.name}</strong></p>
+                        <h2 className="modal-title">{t('group.setHotkey')}</h2>
+                        <p className="modal-subtitle">{t('group.pressKeysForGroup')} <strong>{name || group.name}</strong></p>
 
                         <div
                             ref={captureRef}
@@ -230,14 +232,14 @@ export function GroupModal({ group, allSounds, onSave, onClose }: GroupModalProp
                             {listening && <div className="pulse-ring" />}
                             {capturedKeys.length > 0
                                 ? <span className="captured-key">{formatKeys(capturedKeys)}</span>
-                                : <span className="capture-hint">{listening ? 'Pressione as teclas…' : 'Clique para capturar'}</span>
+                                : <span className="capture-hint">{listening ? t('group.pressKeys') : t('group.clickToCapture')}</span>
                             }
                         </div>
 
                         <div className="modal-actions">
-                            <button className="btn-ghost" onClick={() => { setStep('edit'); setCapturedKeys([]) }}>Voltar</button>
+                            <button className="btn-ghost" onClick={() => { setStep('edit'); setCapturedKeys([]) }}>{t('group.back')}</button>
                             <button className="btn-primary" onClick={confirmHotkey} disabled={capturedKeys.length === 0}>
-                                Confirmar
+                                {t('button.confirm')}
                             </button>
                         </div>
                     </>

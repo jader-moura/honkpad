@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface HotkeyModalProps {
   currentHotkey: string | null
@@ -24,6 +25,7 @@ function formatKey(e: KeyboardEvent): string {
 }
 
 export function HotkeyModal({ currentHotkey, soundName, onConfirm, onClose }: HotkeyModalProps) {
+  const { t } = useTranslation()
   const [captured, setCaptured] = useState<string | null>(null)
   const [listening, setListening] = useState(true)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -49,16 +51,16 @@ export function HotkeyModal({ currentHotkey, soundName, onConfirm, onClose }: Ho
   return (
     <div className="modal-overlay" ref={overlayRef} onClick={(e) => e.target === overlayRef.current && onClose()}>
       <div className="modal-box">
-        <h2 className="modal-title">Configurar Hotkey</h2>
+        <h2 className="modal-title">{t('hotkey.configureTitle')}</h2>
         <p className="modal-subtitle">
-          Som: <strong>{soundName}</strong>
+          {t('hotkey.sound')}: <strong>{soundName}</strong>
         </p>
 
         <div className={`hotkey-capture-area ${listening ? 'listening' : 'captured'}`}>
           {listening ? (
             <>
               <div className="pulse-ring" />
-              <span className="capture-hint">Pressione uma tecla ou combinação…</span>
+              <span className="capture-hint">{t('hotkey.pressKeys')}</span>
             </>
           ) : (
             <span className="captured-key">{captured}</span>
@@ -67,25 +69,25 @@ export function HotkeyModal({ currentHotkey, soundName, onConfirm, onClose }: Ho
 
         {!listening && (
           <button className="btn-secondary small" onClick={() => { setCaptured(null); setListening(true) }}>
-            Tentar novamente
+            {t('hotkey.tryAgain')}
           </button>
         )}
 
         <div className="modal-actions">
           {currentHotkey && (
             <button className="btn-ghost" onClick={() => onConfirm(null)}>
-              Remover hotkey
+              {t('hotkey.removeHotkey')}
             </button>
           )}
           <button className="btn-ghost" onClick={onClose}>
-            Cancelar
+            {t('button.cancel')}
           </button>
           <button
             className="btn-primary"
             disabled={!captured}
             onClick={() => captured && onConfirm(captured)}
           >
-            Confirmar
+            {t('button.confirm')}
           </button>
         </div>
       </div>

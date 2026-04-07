@@ -1,6 +1,6 @@
 {
   "name": "honkpad",
-  "version": "1.0.6",
+  "version": "1.0.10",
   "description": "Honkpad – Live Audio Honkpad",
   "main": "dist-electron/main.js",
   "author": "Jader Moura",

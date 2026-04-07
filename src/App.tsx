@@ -629,7 +629,7 @@ export default function App() {
   }
 
   const handleCreateGroup = async () => {
-    const group = await addGroup('Novo Grupo')
+    const group = await addGroup('')
     setEditGroupId(group.id)
     setTab('groups')
   }

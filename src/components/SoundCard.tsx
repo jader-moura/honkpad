@@ -1,5 +1,6 @@
 import React from 'react'
 import { Play, Square, Keyboard, Trash2, Volume2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { SoundEntry } from '../types/global'
 import { WaveformBar } from './WaveformBar'
 
@@ -22,6 +23,7 @@ export function SoundCard({
   isPlaying,
   progress = 0,
 }: SoundCardProps) {
+  const { t } = useTranslation()
   return (
     <div className={`sound-card ${isPlaying ? 'playing' : ''}`}>
       {isPlaying && <div className="playing-bar" />}
@@ -46,7 +48,7 @@ export function SoundCard({
       <button
         className={`play-btn ${isPlaying ? 'playing' : ''}`}
         onClick={() => isPlaying ? onStop() : onPlay(sound.id)}
-        title={isPlaying ? 'Parar' : 'Reproduzir'}
+        title={isPlaying ? t('sound.stop') : t('sound.play')}
       >
         {isPlaying
           ? <Square size={20} fill="currentColor" />
@@ -58,13 +60,13 @@ export function SoundCard({
         <button
           className={`hotkey-badge ${sound.hotkey ? 'assigned' : 'unassigned'}`}
           onClick={() => onHotkeyClick(sound.id)}
-          title="Configurar hotkey"
+          title={t('sound.configureHotkey')}
         >
           <Keyboard size={12} />
-          <span>{sound.hotkey ?? 'Sem hotkey'}</span>
+          <span>{sound.hotkey ?? t('hotkey.noHotkey')}</span>
         </button>
 
-        <button className="remove-btn" onClick={() => onRemove(sound.id)} title="Remover">
+        <button className="remove-btn" onClick={() => onRemove(sound.id)} title={t('sound.remove')}>
           <Trash2 size={14} />
         </button>
       </div>

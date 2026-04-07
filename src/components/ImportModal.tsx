@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { X, FolderOpen, Search, Play, Square, Plus, Check, Loader } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { MyInstantResult } from '../types/global'
 
 interface ImportModalProps {
@@ -17,6 +18,7 @@ function toFileUrl(p: string): string {
 }
 
 export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalProps) {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<TabId>('file')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<MyInstantResult[]>([])
@@ -36,9 +38,9 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
     try {
       const res = await window.electronAPI.searchMyInstants(q)
       setResults(res)
-      if (res.length === 0) setSearchError('Nenhum resultado encontrado.')
+      if (res.length === 0) setSearchError(t('import.noResultsError'))
     } catch {
-      setSearchError('Erro ao buscar. Verifique sua conexão.')
+      setSearchError(t('import.searchError'))
     } finally {
       setSearching(false)
     }
@@ -86,28 +88,28 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box import-modal" onClick={e => e.stopPropagation()}>
         <button className="stereo-guide-close" onClick={onClose}><X size={14} /></button>
-        <h2 className="modal-title">Importar Áudio</h2>
+        <h2 className="modal-title">{t('import.title')}</h2>
 
         <div className="import-tab-bar">
           <button
             className={`import-tab ${tab === 'file' ? 'active' : ''}`}
             onClick={() => setTab('file')}
           >
-            <FolderOpen size={13} /> Arquivo
+            <FolderOpen size={13} /> {t('import.file')}
           </button>
           <button
             className={`import-tab ${tab === 'myinstants' ? 'active' : ''}`}
             onClick={() => setTab('myinstants')}
           >
-            <Search size={13} /> MyInstants
+            <Search size={13} /> {t('import.myinstants')}
           </button>
         </div>
 
         {tab === 'file' && (
           <div className="import-file-tab">
-            <p className="import-file-hint">Selecione arquivos de áudio do seu computador (MP3, WAV, OGG, M4A…)</p>
+            <p className="import-file-hint">{t('import.fileHint')}</p>
             <button className="btn-primary" onClick={handleFileImport}>
-              <FolderOpen size={15} /> Selecionar Arquivos
+              <FolderOpen size={15} /> {t('import.selectFiles')}
             </button>
           </div>
         )}
@@ -120,7 +122,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
                 <input
                   className="search-input"
                   style={{ width: '100%' }}
-                  placeholder="Buscar no MyInstants…"
+                  placeholder={t('import.search')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -128,7 +130,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
                 />
               </div>
               <button className="btn-primary" onClick={search} disabled={searching || !query.trim()}>
-                {searching ? <Loader size={14} className="spin" /> : 'Buscar'}
+                {searching ? <Loader size={14} className="spin" /> : t('import.searchBtn')}
               </button>
             </div>
 
@@ -143,7 +145,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
                       <button
                         className={`preview-btn ${previewingSlug === r.slug ? 'previewing' : ''}`}
                         onClick={() => togglePreview(r)}
-                        title={previewingSlug === r.slug ? 'Parar' : 'Ouvir'}
+                        title={previewingSlug === r.slug ? t('import.stop') : t('import.listen')}
                       >
                         {previewingSlug === r.slug
                           ? <Square size={11} fill="currentColor" />
@@ -154,7 +156,7 @@ export function ImportModal({ onFileImport, addSounds, onClose }: ImportModalPro
                         className={`import-add-btn ${state === 'added' ? 'added' : ''}`}
                         onClick={() => state === 'idle' && handleAdd(r)}
                         disabled={state !== 'idle'}
-                        title="Adicionar ao Honkpad"
+                        title={t('import.addToHonkpad')}
                       >
                         {state === 'downloading' && <Loader size={13} className="spin" />}
                         {state === 'added' && <Check size={13} />}

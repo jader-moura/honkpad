@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Bug, X, Wifi, WifiOff, Volume2, Monitor, Cable, Mic } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ConflictInfo, VBCableStatus } from '../types/global'
 
 interface AudioDeviceDebug {
@@ -33,6 +34,7 @@ export function DebugPanel({
   vbcableStatus,
   conflict,
 }: DebugPanelProps) {
+  const { t } = useTranslation()
   const [devices, setDevices] = useState<AudioDeviceDebug[]>([])
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function DebugPanel({
         setDevices(
           all.map((d) => ({
             deviceId: d.deviceId,
-            label: d.label || `(sem nome — ${d.deviceId.slice(0, 12)}…)`,
+            label: d.label || `(${t('debug.unnamed')} — ${d.deviceId.slice(0, 12)}…)`,
             kind: d.kind,
           })),
         )
@@ -65,7 +67,7 @@ export function DebugPanel({
       <div className="debug-panel" onClick={(e) => e.stopPropagation()}>
         <div className="debug-header">
           <Bug size={16} />
-          <span>Painel de Debug</span>
+          <span>{t('debug.title')}</span>
           <button className="debug-close" onClick={onClose}><X size={14} /></button>
         </div>
 
@@ -77,37 +79,37 @@ export function DebugPanel({
           {vbcableStatus ? (
             <div className="debug-kv-list">
               <div className="debug-kv">
-                <span>Instalado</span>
+                <span>{t('debug.installed')}</span>
                 <span className={vbcableStatus.installed ? 'debug-ok' : 'debug-err'}>
-                  {vbcableStatus.installed ? 'Sim' : 'Não'}
+                  {vbcableStatus.installed ? t('debug.yes') : t('debug.no')}
                 </span>
               </div>
               <div className="debug-kv">
-                <span>CABLE Input</span>
+                <span>{t('debug.cableInput')}</span>
                 <span className={vbcableStatus.cableInputFound ? 'debug-ok' : 'debug-err'}>
-                  {vbcableStatus.cableInputFound ? 'Encontrado' : 'Não encontrado'}
+                  {vbcableStatus.cableInputFound ? t('debug.found') : t('debug.notFound')}
                 </span>
               </div>
               <div className="debug-kv">
-                <span>CABLE Output</span>
+                <span>{t('debug.cableOutput')}</span>
                 <span className={vbcableStatus.cableOutputFound ? 'debug-ok' : 'debug-err'}>
-                  {vbcableStatus.cableOutputFound ? 'Encontrado' : 'Não encontrado'}
+                  {vbcableStatus.cableOutputFound ? t('debug.found') : t('debug.notFound')}
                 </span>
               </div>
             </div>
           ) : (
-            <div className="debug-muted">Não verificado</div>
+            <div className="debug-muted">{t('debug.notChecked')}</div>
           )}
         </div>
 
         {/* Routing */}
         <div className="debug-section">
           <div className="debug-section-title">
-            <Volume2 size={13} /> Roteamento
+            <Volume2 size={13} /> {t('debug.routing')}
           </div>
           <div className="debug-kv-list">
             <div className="debug-kv">
-              <span>Saída Virtual (CABLE)</span>
+              <span>{t('debug.virtualOutput')}</span>
               <span className="debug-val">
                 {cableInputDeviceId
                   ? outputs.find((d) => d.deviceId === cableInputDeviceId)?.label || cableInputDeviceId.slice(0, 16)
@@ -115,29 +117,29 @@ export function DebugPanel({
               </span>
             </div>
             <div className="debug-kv">
-              <span>Monitor (Caixas/Fone)</span>
+              <span>{t('debug.monitor')}</span>
               <span className="debug-val">
                 {monitorDeviceId
                   ? outputs.find((d) => d.deviceId === monitorDeviceId)?.label || monitorDeviceId.slice(0, 16)
-                  : 'Padrão do sistema'}
+                  : t('audio.systemDefault')}
               </span>
             </div>
             <div className="debug-kv">
-              <span>Volume Virtual</span>
+              <span>{t('debug.virtualVolume')}</span>
               <span className="debug-val">{Math.round(virtualVolume * 100)}%</span>
             </div>
             <div className="debug-kv">
-              <span>Volume Monitor</span>
+              <span>{t('debug.monitorVolume')}</span>
               <span className="debug-val">{Math.round(monitorVolume * 100)}%</span>
             </div>
             <div className="debug-kv">
-              <span>Mic Passthrough</span>
+              <span>{t('debug.micPassthrough')}</span>
               <span className={micPassthroughActive ? 'debug-ok' : 'debug-muted'}>
-                {micPassthroughActive ? 'Ativo' : 'Inativo'}
+                {micPassthroughActive ? t('debug.active') : t('debug.inactive')}
               </span>
             </div>
             <div className="debug-kv">
-              <span>Microfone</span>
+              <span>{t('debug.microphone')}</span>
               <span className="debug-val">
                 {micDeviceId
                   ? inputs.find((d) => d.deviceId === micDeviceId)?.label || micDeviceId.slice(0, 16)
@@ -151,7 +153,7 @@ export function DebugPanel({
         <div className="debug-section">
           <div className="debug-section-title">
             {conflict?.hasConflict ? <WifiOff size={13} /> : <Wifi size={13} />}
-            Conflitos
+            {t('debug.conflicts')}
           </div>
           {conflict?.hasConflict ? (
             <ul className="debug-conflict-list">
@@ -160,14 +162,14 @@ export function DebugPanel({
               ))}
             </ul>
           ) : (
-            <div className="debug-ok">Nenhum conflito detectado</div>
+            <div className="debug-ok">{t('debug.noConflict')}</div>
           )}
         </div>
 
         {/* All Devices */}
         <div className="debug-section">
           <div className="debug-section-title">
-            <Monitor size={13} /> Dispositivos de Saída ({outputs.length})
+            <Monitor size={13} /> {t('debug.outputDevices', { count: outputs.length })}
           </div>
           <div className="debug-device-list">
             {outputs.map((d) => (
@@ -180,7 +182,7 @@ export function DebugPanel({
         </div>
 
         <div className="debug-section">
-          <div className="debug-section-title">Dispositivos de Entrada ({inputs.length})</div>
+          <div className="debug-section-title">{t('debug.inputDevices', { count: inputs.length })}</div>
           <div className="debug-device-list">
             {inputs.map((d) => (
               <div key={d.deviceId} className="debug-device">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Loader2, Download, RotateCcw, AlertTriangle, CheckCircle2, Cable, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 type SetupStep = 'checking' | 'not-found' | 'installing' | 'restart' | 'error' | 'dev-skip'
 
@@ -8,6 +9,7 @@ interface VBCableSetupProps {
 }
 
 export function VBCableSetup({ onComplete }: VBCableSetupProps) {
+  const { t } = useTranslation()
   const [step, setStep] = useState<SetupStep>('checking')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -64,9 +66,9 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <div className="vbcable-icon spinning">
               <Loader2 size={36} />
             </div>
-            <h2>Verificando VB-Cable…</h2>
+            <h2>{t('vbcable.checking')}</h2>
             <p className="vbcable-desc">
-              Detectando se o VB-Audio Virtual Cable está instalado no seu sistema.
+              {t('vbcable.setup')}
             </p>
           </>
         )}
@@ -77,30 +79,29 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <div className="vbcable-icon cable">
               <Cable size={36} />
             </div>
-            <h2>VB-Cable não encontrado</h2>
+            <h2>{t('vbcable.notFound')}</h2>
             <p className="vbcable-desc">
-              O <strong>VB-Audio Virtual Cable</strong> é necessário para que outros
-              ouçam seus sons em calls e jogos. Ele cria um microfone virtual no seu sistema.
+              {t('vbcable.desc')}
             </p>
             <div className="vbcable-features">
               <div className="vbcable-feature">
                 <CheckCircle2 size={14} />
-                <span>Gratuito e seguro (vb-audio.com)</span>
+                <span>{t('vbcable.free')}</span>
               </div>
               <div className="vbcable-feature">
                 <CheckCircle2 size={14} />
-                <span>Instalação leva ~10 segundos</span>
+                <span>{t('vbcable.installTime')}</span>
               </div>
               <div className="vbcable-feature">
                 <CheckCircle2 size={14} />
-                <span>Requer permissão de administrador</span>
+                <span>{t('vbcable.adminRequired')}</span>
               </div>
             </div>
             <button className="btn-primary large" onClick={handleInstall}>
-              <Download size={16} /> Instalar agora
+              <Download size={16} /> {t('vbcable.installNow')}
             </button>
             <button className="btn-ghost vbcable-skip" onClick={handleSkip}>
-              Pular — usar sem microfone virtual
+              {t('vbcable.skip')}
             </button>
           </>
         )}
@@ -111,10 +112,9 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <div className="vbcable-icon spinning">
               <Loader2 size={36} />
             </div>
-            <h2>Instalando VB-Cable…</h2>
+            <h2>{t('vbcable.installing')}</h2>
             <p className="vbcable-desc">
-              O Windows pode pedir permissão de administrador.<br />
-              Aceite o prompt do UAC para continuar.
+              {t('vbcable.adminPrompt')}
             </p>
             <div className="vbcable-progress">
               <div className="vbcable-progress-bar" />
@@ -128,16 +128,15 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <div className="vbcable-icon success">
               <CheckCircle2 size={36} />
             </div>
-            <h2>VB-Cable instalado!</h2>
+            <h2>{t('vbcable.installed')}</h2>
             <p className="vbcable-desc">
-              Para que o dispositivo de áudio virtual seja reconhecido, é necessário
-              <strong> reiniciar o computador</strong>.
+              {t('vbcable.restart')}
             </p>
             <p className="vbcable-subdesc">
-              Após reiniciar, abra o Honkpad novamente e tudo estará configurado automaticamente.
+              {t('vbcable.restartAfter')}
             </p>
             <button className="btn-primary large" onClick={() => onComplete()}>
-              Entendi — vou reiniciar depois
+              {t('vbcable.understood')}
             </button>
           </>
         )}
@@ -148,19 +147,19 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <div className="vbcable-icon error">
               <AlertTriangle size={36} />
             </div>
-            <h2>Erro na instalação</h2>
+            <h2>{t('vbcable.installError')}</h2>
             <p className="vbcable-desc">
-              Não foi possível instalar o VB-Cable automaticamente.
+              {t('vbcable.installErrorDesc')}
             </p>
             {errorMsg && (
               <div className="vbcable-error-detail">{errorMsg}</div>
             )}
             <div className="vbcable-actions-row">
               <button className="btn-primary" onClick={() => checkStatus()}>
-                <RotateCcw size={14} /> Tentar novamente
+                <RotateCcw size={14} /> {t('vbcable.retry')}
               </button>
               <button className="btn-ghost" onClick={handleSkip}>
-                Pular
+                {t('vbcable.skip')}
               </button>
             </div>
           </>

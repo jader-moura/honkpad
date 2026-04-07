@@ -1,5 +1,6 @@
 import React from 'react'
 import { Play, Keyboard, Trash2, Edit2, Shuffle, Music } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { SoundGroup, SoundEntry } from '../types/global'
 
 interface GroupCardProps {
@@ -12,6 +13,7 @@ interface GroupCardProps {
 }
 
 export function GroupCard({ group, sounds, onPlayRandom, onEdit, onRemove, isPlaying }: GroupCardProps) {
+    const { t } = useTranslation()
     const groupSounds = sounds.filter(s => group.soundIds.includes(s.id))
     const count = groupSounds.length
 
@@ -22,7 +24,7 @@ export function GroupCard({ group, sounds, onPlayRandom, onEdit, onRemove, isPla
             {/* Group badge */}
             <div className="group-badge">
                 <Shuffle size={11} />
-                Grupo · {count} {count === 1 ? 'som' : 'sons'}
+                {t('group.selectSounds')} · {count}
             </div>
 
             <div className="sound-card-name" title={group.name}>
@@ -36,18 +38,18 @@ export function GroupCard({ group, sounds, onPlayRandom, onEdit, onRemove, isPla
                     {groupSounds.slice(0, 3).map(s => (
                         <span key={s.id} className="group-sound-chip">{s.name}</span>
                     ))}
-                    {count > 3 && <span className="group-sound-chip muted">+{count - 3} mais</span>}
+                    {count > 3 && <span className="group-sound-chip muted">{t('group.moreCount', { count: count - 3 })}</span>}
                 </div>
             )}
 
             {count === 0 && (
-                <p className="group-empty-hint">Nenhum som adicionado</p>
+                <p className="group-empty-hint">{t('group.noSoundsAdded')}</p>
             )}
 
             <button
                 className={`play-btn ${isPlaying ? 'playing' : ''}`}
                 onClick={() => onPlayRandom(group.id)}
-                title="Reproduzir som aleatório do grupo"
+                title={t('group.playTitle')}
                 disabled={count === 0}
             >
                 <Shuffle size={20} />
@@ -57,17 +59,17 @@ export function GroupCard({ group, sounds, onPlayRandom, onEdit, onRemove, isPla
                 <button
                     className={`hotkey-badge ${group.hotkey ? 'assigned' : 'unassigned'}`}
                     onClick={() => onEdit(group.id)}
-                    title="Editar grupo"
+                    title={t('group.editTitle')}
                 >
                     <Keyboard size={12} />
-                    <span>{group.hotkey ?? 'Sem hotkey'}</span>
+                    <span>{group.hotkey ?? t('hotkey.noHotkey')}</span>
                 </button>
 
                 <div className="group-actions">
-                    <button className="edit-btn" onClick={() => onEdit(group.id)} title="Editar grupo">
+                    <button className="edit-btn" onClick={() => onEdit(group.id)} title={t('group.editTitle')}>
                         <Edit2 size={13} />
                     </button>
-                    <button className="remove-btn" onClick={() => onRemove(group.id)} title="Remover grupo">
+                    <button className="remove-btn" onClick={() => onRemove(group.id)} title={t('group.removeTitle')}>
                         <Trash2 size={14} />
                     </button>
                 </div>
