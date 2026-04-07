@@ -414,14 +414,23 @@ export default function App() {
         audio.srcObject = stream
         audio.volume = 1.0  // full volume — mic passthrough should be transparent
 
+        let setSinkSuccess = false
         try {
           const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
-          if (setSink) await setSink.call(audio, cableInputDeviceId)
+          if (setSink) {
+            await setSink.call(audio, cableInputDeviceId)
+            setSinkSuccess = true
+          }
         } catch (err) {
           console.warn('[Mic Passthrough] setSinkId failed:', err)
         }
 
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+
+        // Ensure device is ready before playing (small delay if setSinkId worked)
+        if (setSinkSuccess) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
 
         await audio.play()
         micStreamRef.current = stream
