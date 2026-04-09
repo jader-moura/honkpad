@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
-import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync, unlinkSync } from 'fs'
 import { execSync, spawn } from 'child_process'
 import https from 'https'
 import http from 'http'
@@ -188,16 +188,78 @@ function checkVBCableInstalled(): VBCableStatus {
   return result
 }
 
+// ── VB-Cable Download ──────────────────────────────────────────────────────────
+
+async function downloadVBCableInstaller(installerPath: string): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    const downloadUrl = 'https://vb-audio.com/Cable/VBCABLE_Setup_x64.zip'
+    log.info('[VBCable] Downloading from:', downloadUrl)
+
+    // Ensure directory exists
+    const installerDir = installerPath.substring(0, installerPath.lastIndexOf('\\'))
+    mkdirSync(installerDir, { recursive: true })
+
+    const zipPath = installerPath.replace('.exe', '.zip')
+    const file = createWriteStream(zipPath)
+
+    https.get(downloadUrl, (response) => {
+      // Handle redirects
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        const redirectUrl = response.headers.location
+        log.info('[VBCable] Redirected to:', redirectUrl)
+        return https.get(redirectUrl, (redirectResponse) => {
+          redirectResponse.pipe(file)
+        })
+      }
+
+      response.pipe(file)
+
+      file.on('finish', () => {
+        file.close()
+        log.info('[VBCable] Download completed, extracting...')
+
+        // Extract zip using PowerShell (built-in, no external deps)
+        const extractCmd = `Expand-Archive -Path '${zipPath.replace(/'/g, "''")}' -DestinationPath '${installerDir.replace(/'/g, "''")}' -Force`
+        try {
+          execSync(`powershell.exe -NoProfile -NonInteractive -Command "${extractCmd.replace(/"/g, '\\"')}"`, {
+            windowsHide: true,
+          })
+          log.info('[VBCable] Extraction completed')
+
+          // Delete zip file
+          try {
+            unlinkSync(zipPath)
+          } catch (e) {
+            log.warn('[VBCable] Could not delete temp zip:', e)
+          }
+
+          resolve({ success: true })
+        } catch (err) {
+          log.error('[VBCable] Extraction failed:', err)
+          resolve({ success: false, error: `Extraction failed: ${err}` })
+        }
+      })
+    }).on('error', (err) => {
+      log.error('[VBCable] Download failed:', err)
+      file.destroy()
+      resolve({ success: false, error: `Download failed: ${err.message}` })
+    })
+  })
+}
+
 // ── VB-Cable Installation ───────────────────────────────────────────────────────
 
 async function installVBCable(): Promise<{ success: boolean; error?: string }> {
   const installerPath = getResourcePath('resources', 'vbcable', 'VBCABLE_Setup_x64.exe')
   log.info('[VBCable] Installer path:', installerPath)
 
+  // If installer doesn't exist, download it first
   if (!existsSync(installerPath)) {
-    const msg = `Installer not found at: ${installerPath}`
-    log.error('[VBCable]', msg)
-    return { success: false, error: msg }
+    log.info('[VBCable] Installer not found, downloading...')
+    const downloadResult = await downloadVBCableInstaller(installerPath)
+    if (!downloadResult.success) {
+      return downloadResult
+    }
   }
 
   return new Promise((resolve) => {
