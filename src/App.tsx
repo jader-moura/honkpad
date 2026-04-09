@@ -405,14 +405,16 @@ export default function App() {
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { deviceId: { exact: micDeviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          audio: { deviceId: { exact: micDeviceId }, echoCancellation: true, noiseSuppression: false, autoGainControl: false }
         })
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
 
         // Route mic stream to CABLE Input via HTMLAudioElement + setSinkId
+        // Keep muted so user doesn't hear their own voice (only the sounds playing)
         const audio = new Audio()
         audio.srcObject = stream
-        audio.volume = 1.0  // full volume — mic passthrough should be transparent
+        audio.muted = true  // critical: prevent user feedback loop
+        audio.volume = 0    // ensure no audio output to monitor
 
         let setSinkSuccess = false
         try {
@@ -420,6 +422,7 @@ export default function App() {
           if (setSink) {
             await setSink.call(audio, cableInputDeviceId)
             setSinkSuccess = true
+            console.log('[Mic Passthrough] setSinkId succeeded:', cableInputDeviceId)
           }
         } catch (err) {
           console.warn('[Mic Passthrough] setSinkId failed:', err)
@@ -436,7 +439,7 @@ export default function App() {
         micStreamRef.current = stream
         micAudioRef.current = audio
         setMicPassthroughActive(true)
-        console.log('[Mic Passthrough] Active:', micDeviceId, '→', cableInputDeviceId)
+        console.log('[Mic Passthrough] Active: echoCancellation=true, muted=true, outlet=CABLE Input')
       } catch (err) {
         console.error('[Mic Passthrough] Failed:', err)
         setMicPassthroughActive(false)
