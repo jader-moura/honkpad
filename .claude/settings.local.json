@@ -23,7 +23,9 @@
       "Bash(gh auth:*)",
       "Bash(git remote:*)",
       "Bash(git push:*)",
-      "Bash(ls -lh /c/Users/USER/development/soundboard/dist/*.exe)"
+      "Bash(ls -lh /c/Users/USER/development/soundboard/dist/*.exe)",
+      "Bash(npx ts-node:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

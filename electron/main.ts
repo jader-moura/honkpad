@@ -277,20 +277,30 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
           log.info('[VBCable] Extraction completed')
 
           // Find the actual exe file (may be in a subdirectory)
-          // VB-Cable pack contains setup executables with various names
+          // VB-Cable pack contains setup executables with various names: VBCABLE_Setup.exe, VBCABLE_Setup_x64.exe, VBCable_PackSetup.exe, etc.
           let foundExePath = ''
-          const exePatterns = ['VBCable_PackSetup.exe', 'VBCABLE_Setup_x64.exe', 'Setup.exe']
-          const searchForExe = (dir: string): string => {
+          const searchForExe = (dir: string, maxDepth = 5, depth = 0): string => {
+            if (depth > maxDepth) return ''
             try {
               const files = readdirSync(dir)
+              // First pass: look for any exe containing "setup" or starting with "vbcable"
+              for (const file of files) {
+                if (file.endsWith('.exe')) {
+                  const lowerFile = file.toLowerCase()
+                  // Prioritize files that contain 'setup' in their name
+                  if (lowerFile.includes('setup')) {
+                    const filePath = join(dir, file)
+                    log.info('[VBCable] Found setup exe:', filePath)
+                    return filePath
+                  }
+                }
+              }
+              // Second pass: recursively search subdirectories
               for (const file of files) {
                 const filePath = join(dir, file)
                 const stat = statSync(filePath)
-                if (stat.isFile() && exePatterns.some(pattern => file.toLowerCase().includes(pattern.toLowerCase()) || file.endsWith('Setup.exe'))) {
-                  return filePath
-                }
                 if (stat.isDirectory()) {
-                  const result = searchForExe(filePath)
+                  const result = searchForExe(filePath, maxDepth, depth + 1)
                   if (result) return result
                 }
               }
@@ -314,10 +324,19 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
                 resolve({ success: false, error: `Failed to copy installer: ${copyErr}` })
                 return
               }
+            } else {
+              log.info('[VBCable] Exe already at expected location')
             }
           } else {
             log.error('[VBCable] Extraction completed but exe not found in any subdirectory')
-            resolve({ success: false, error: 'VB-Cable executable not found after extraction' })
+            // List what was actually extracted
+            try {
+              const extractedFiles = readdirSync(installerDir)
+              log.error('[VBCable] Files in extraction directory:', extractedFiles.join(', '))
+            } catch (e) {
+              log.error('[VBCable] Could not list extraction directory:', e)
+            }
+            resolve({ success: false, error: 'VB-Cable setup executable not found in extracted files' })
             return
           }
 

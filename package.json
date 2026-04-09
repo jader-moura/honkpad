@@ -2,13 +2,16 @@
   "name": "honkpad",
   "version": "1.0.12",
   "description": "Honkpad – Live Audio Honkpad",
+  "type": "module",
   "main": "dist-electron/main.js",
   "author": "Jader Moura",
   "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build && electron-builder",
-    "build:clean": "npm version patch --no-git-tag-version && rmdir /s /q dist dist-electron 2>nul || true && npm run build"
+    "build:clean": "npm version patch --no-git-tag-version && rmdir /s /q dist dist-electron 2>nul || true && npm run build",
+    "test": "npx ts-node tests/run-all-tests.ts",
+    "test:vbcable": "npx ts-node tests/vbcable-download.test.ts"
   },
   "build": {
     "appId": "com.honkpad.app",
