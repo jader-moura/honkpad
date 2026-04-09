@@ -22,7 +22,8 @@
       "Bash(git tag:*)",
       "Bash(gh auth:*)",
       "Bash(git remote:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ls -lh /c/Users/USER/development/soundboard/dist/*.exe)"
     ]
   }
 }

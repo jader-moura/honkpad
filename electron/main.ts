@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, globalShortcut, shell, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
-import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync, unlinkSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, createWriteStream, mkdirSync, unlinkSync, statSync, copyFileSync } from 'fs'
 import { execSync, spawn } from 'child_process'
 import https from 'https'
 import http from 'http'
@@ -208,8 +208,21 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
         const redirectUrl = response.headers.location
         log.info('[VBCable] Redirected to:', redirectUrl)
         return https.get(redirectUrl, (redirectResponse) => {
+          if (redirectResponse.statusCode !== 200) {
+            log.error('[VBCable] Redirect returned status:', redirectResponse.statusCode)
+            file.destroy()
+            resolve({ success: false, error: `Download failed with status: ${redirectResponse.statusCode}` })
+            return
+          }
           redirectResponse.pipe(file)
         })
+      }
+
+      if (response.statusCode !== 200) {
+        log.error('[VBCable] Download returned status:', response.statusCode)
+        file.destroy()
+        resolve({ success: false, error: `Download failed with HTTP status: ${response.statusCode}` })
+        return
       }
 
       response.pipe(file)
@@ -226,6 +239,49 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
           })
           log.info('[VBCable] Extraction completed')
 
+          // Find the actual exe file (may be in a subdirectory)
+          let foundExePath = ''
+          const searchForExe = (dir: string): string => {
+            try {
+              const files = readdirSync(dir)
+              for (const file of files) {
+                const filePath = join(dir, file)
+                const stat = statSync(filePath)
+                if (stat.isFile() && file === 'VBCABLE_Setup_x64.exe') {
+                  return filePath
+                }
+                if (stat.isDirectory()) {
+                  const result = searchForExe(filePath)
+                  if (result) return result
+                }
+              }
+            } catch (e) {
+              log.warn('[VBCable] Error searching directory:', e)
+            }
+            return ''
+          }
+
+          foundExePath = searchForExe(installerDir)
+
+          if (foundExePath) {
+            log.info('[VBCable] Found exe at:', foundExePath)
+            if (foundExePath !== installerPath) {
+              log.info('[VBCable] Copying to expected location:', installerPath)
+              try {
+                copyFileSync(foundExePath, installerPath)
+                log.info('[VBCable] Successfully copied exe to:', installerPath)
+              } catch (copyErr) {
+                log.error('[VBCable] Failed to copy exe:', copyErr)
+                resolve({ success: false, error: `Failed to copy installer: ${copyErr}` })
+                return
+              }
+            }
+          } else {
+            log.error('[VBCable] Extraction completed but exe not found in any subdirectory')
+            resolve({ success: false, error: 'VB-Cable executable not found after extraction' })
+            return
+          }
+
           // Delete zip file
           try {
             unlinkSync(zipPath)
@@ -233,6 +289,14 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
             log.warn('[VBCable] Could not delete temp zip:', e)
           }
 
+          // Final verification
+          if (!existsSync(installerPath)) {
+            log.error('[VBCable] Exe file does not exist at final location:', installerPath)
+            resolve({ success: false, error: `Installer not found at: ${installerPath}` })
+            return
+          }
+
+          log.info('[VBCable] Download and extraction successful')
           resolve({ success: true })
         } catch (err) {
           log.error('[VBCable] Extraction failed:', err)
@@ -255,11 +319,21 @@ async function installVBCable(): Promise<{ success: boolean; error?: string }> {
 
   // If installer doesn't exist, download it first
   if (!existsSync(installerPath)) {
-    log.info('[VBCable] Installer not found, downloading...')
+    log.info('[VBCable] Installer not found at:', installerPath)
+    log.info('[VBCable] Downloading VB-Cable...')
     const downloadResult = await downloadVBCableInstaller(installerPath)
     if (!downloadResult.success) {
-      return downloadResult
+      const errorMsg = `Failed to download VB-Cable: ${downloadResult.error}`
+      log.error('[VBCable]', errorMsg)
+      return { success: false, error: errorMsg }
     }
+  }
+
+  // Verify the exe exists before trying to run it
+  if (!existsSync(installerPath)) {
+    const errorMsg = `Installer file not found at: ${installerPath} (after download/extraction)`
+    log.error('[VBCable]', errorMsg)
+    return { success: false, error: errorMsg }
   }
 
   return new Promise((resolve) => {
