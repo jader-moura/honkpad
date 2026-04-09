@@ -190,9 +190,46 @@ function checkVBCableInstalled(): VBCableStatus {
 
 // ── VB-Cable Download ──────────────────────────────────────────────────────────
 
-async function downloadVBCableInstaller(installerPath: string): Promise<{ success: boolean; error?: string }> {
+async function getVBCableDownloadUrl(): Promise<{ success: boolean; url?: string; error?: string }> {
   return new Promise((resolve) => {
-    const downloadUrl = 'https://vb-audio.com/Cable/VBCABLE_Setup_x64.zip'
+    https.get('https://vb-audio.com/Cable/', (response) => {
+      const chunks: Buffer[] = []
+      response.on('data', (chunk: Buffer) => chunks.push(chunk))
+      response.on('end', () => {
+        try {
+          const html = Buffer.concat(chunks).toString('utf-8')
+          // Look for the download link pattern: href="https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack*.zip"
+          const match = html.match(/href="(https:\/\/download\.vb-audio\.com\/Download_CABLE\/VBCABLE_Driver_Pack\d+\.zip)"/i)
+          if (match && match[1]) {
+            log.info('[VBCable] Found download URL:', match[1])
+            resolve({ success: true, url: match[1] })
+          } else {
+            log.error('[VBCable] Could not find download link in page')
+            resolve({ success: false, error: 'Could not find download link on VB-Cable website' })
+          }
+        } catch (err) {
+          log.error('[VBCable] Error parsing page:', err)
+          resolve({ success: false, error: `Error parsing download page: ${err}` })
+        }
+      })
+    }).on('error', (err) => {
+      log.error('[VBCable] Failed to fetch download page:', err)
+      resolve({ success: false, error: `Failed to fetch VB-Cable download page: ${err.message}` })
+    })
+  })
+}
+
+async function downloadVBCableInstaller(installerPath: string): Promise<{ success: boolean; error?: string }> {
+  return new Promise(async (resolve) => {
+    // Get the download URL dynamically from the website
+    const urlResult = await getVBCableDownloadUrl()
+    if (!urlResult.success || !urlResult.url) {
+      log.error('[VBCable] Failed to get download URL:', urlResult.error)
+      resolve({ success: false, error: urlResult.error })
+      return
+    }
+
+    const downloadUrl = urlResult.url
     log.info('[VBCable] Downloading from:', downloadUrl)
 
     // Ensure directory exists
@@ -240,14 +277,16 @@ async function downloadVBCableInstaller(installerPath: string): Promise<{ succes
           log.info('[VBCable] Extraction completed')
 
           // Find the actual exe file (may be in a subdirectory)
+          // VB-Cable pack contains setup executables with various names
           let foundExePath = ''
+          const exePatterns = ['VBCable_PackSetup.exe', 'VBCABLE_Setup_x64.exe', 'Setup.exe']
           const searchForExe = (dir: string): string => {
             try {
               const files = readdirSync(dir)
               for (const file of files) {
                 const filePath = join(dir, file)
                 const stat = statSync(filePath)
-                if (stat.isFile() && file === 'VBCABLE_Setup_x64.exe') {
+                if (stat.isFile() && exePatterns.some(pattern => file.toLowerCase().includes(pattern.toLowerCase()) || file.endsWith('Setup.exe'))) {
                   return filePath
                 }
                 if (stat.isDirectory()) {
