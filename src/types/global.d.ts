@@ -74,6 +74,9 @@ declare global {
       minimizeWindow: () => void
       maximizeWindow: () => void
       closeWindow: () => void
+
+      // External links
+      openExternal: (url: string) => Promise<void>
     }
   }
 }

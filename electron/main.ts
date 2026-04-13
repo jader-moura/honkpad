@@ -748,6 +748,12 @@ ipcMain.on('window-maximize', () => {
 })
 ipcMain.on('window-close', () => mainWindow?.hide())
 
+// ── External Links ─────────────────────────────────────────────────────────────
+
+ipcMain.handle('open-external', async (_, url: string) => {
+  await shell.openExternal(url)
+})
+
 // ── Tray IPC ───────────────────────────────────────────────────────────────────
 
 ipcMain.on('tray-update-status', (_, isPlaying: boolean) => {

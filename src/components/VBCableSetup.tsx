@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Loader2, Download, RotateCcw, AlertTriangle, CheckCircle2, Cable, X } from 'lucide-react'
+import { Loader2, Download, RotateCcw, AlertTriangle, CheckCircle2, Cable, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-type SetupStep = 'checking' | 'not-found' | 'installing' | 'restart' | 'error' | 'dev-skip'
+type SetupStep = 'checking' | 'not-found' | 'restart' | 'error' | 'dev-skip'
 
 interface VBCableSetupProps {
   onComplete: () => void
@@ -34,21 +34,9 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
     }
   }
 
-  async function handleInstall() {
-    setStep('installing')
-    try {
-      const result = await window.electronAPI.installVBCable()
-      if (result.success) {
-        await window.electronAPI.setVBCableFlag(true)
-        setStep('restart')
-      } else {
-        setStep('error')
-        setErrorMsg(result.error || 'Erro desconhecido na instalação.')
-      }
-    } catch (err) {
-      setStep('error')
-      setErrorMsg(String(err))
-    }
+  function handleOpenDownload() {
+    // Open VB-Cable download URL
+    window.electronAPI.openExternal('https://vb-audio.com/Cable/')
   }
 
   function handleSkip() {
@@ -83,6 +71,17 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             <p className="vbcable-desc">
               {t('vbcable.desc')}
             </p>
+
+            <div className="vbcable-instructions">
+              <h3>{t('vbcable.installSteps')}</h3>
+              <ol className="vbcable-steps-list">
+                <li>{t('vbcable.step1')}</li>
+                <li>{t('vbcable.step2')}</li>
+                <li>{t('vbcable.step3')}</li>
+                <li>{t('vbcable.step4')}</li>
+              </ol>
+            </div>
+
             <div className="vbcable-features">
               <div className="vbcable-feature">
                 <CheckCircle2 size={14} />
@@ -97,32 +96,22 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
                 <span>{t('vbcable.adminRequired')}</span>
               </div>
             </div>
-            <button className="btn-primary large" onClick={handleInstall}>
-              <Download size={16} /> {t('vbcable.installNow')}
-            </button>
+
+            <div className="vbcable-actions-row">
+              <button className="btn-primary large" onClick={handleOpenDownload}>
+                <ExternalLink size={16} /> {t('vbcable.downloadNow')}
+              </button>
+              <button className="btn-secondary" onClick={() => checkStatus()}>
+                <RotateCcw size={14} /> {t('vbcable.checkAgain')}
+              </button>
+            </div>
             <button className="btn-ghost vbcable-skip" onClick={handleSkip}>
               {t('vbcable.skip')}
             </button>
           </>
         )}
 
-        {/* ── Installing ── */}
-        {step === 'installing' && (
-          <>
-            <div className="vbcable-icon spinning">
-              <Loader2 size={36} />
-            </div>
-            <h2>{t('vbcable.installing')}</h2>
-            <p className="vbcable-desc">
-              {t('vbcable.adminPrompt')}
-            </p>
-            <div className="vbcable-progress">
-              <div className="vbcable-progress-bar" />
-            </div>
-          </>
-        )}
-
-        {/* ── Restart ── */}
+        {/* ── Success ── */}
         {step === 'restart' && (
           <>
             <div className="vbcable-icon success">
@@ -130,10 +119,7 @@ export function VBCableSetup({ onComplete }: VBCableSetupProps) {
             </div>
             <h2>{t('vbcable.installed')}</h2>
             <p className="vbcable-desc">
-              {t('vbcable.restart')}
-            </p>
-            <p className="vbcable-subdesc">
-              {t('vbcable.restartAfter')}
+              {t('vbcable.readyToUse')}
             </p>
             <button className="btn-primary large" onClick={() => onComplete()}>
               {t('vbcable.understood')}
