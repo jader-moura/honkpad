@@ -12,6 +12,7 @@ import { VBCableSetup } from './components/VBCableSetup'
 import { ConflictWarning } from './components/ConflictWarning'
 import { DebugPanel } from './components/DebugPanel'
 import { ImportModal } from './components/ImportModal'
+import { VoiceEffectsPage } from './components/VoiceEffectsPage'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
@@ -29,6 +30,17 @@ interface AudioDevice {
 interface InputDevice {
   deviceId: string
   label: string
+}
+
+export interface VoiceEffectsSettings {
+  enabled: boolean
+  testMode: boolean
+  noiseGate: { enabled: boolean; threshold: number }
+  robot: { enabled: boolean; frequency: number }
+  telephone: { enabled: boolean }
+  reverb: { enabled: boolean; decay: number }
+  kidVoice: { enabled: boolean; gain: number }
+  ladyVoice: { enabled: boolean; gain: number }
 }
 
 // ─── Hotkey Helpers ───────────────────────────────────────────────────────────
@@ -61,6 +73,133 @@ function isCableInputDevice(label: string): boolean {
 function toFileUrl(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
   return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
+}
+
+// ─── Voice Effects Helpers ────────────────────────────────────────────────────
+
+function buildImpulseResponse(ctx: AudioContext, decay: number): AudioBuffer {
+  const len = Math.floor(ctx.sampleRate * decay)
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate)
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch)
+    for (let i = 0; i < len; i++)
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3)
+  }
+  return buf
+}
+
+function buildEffectChain(
+  ctx: AudioContext,
+  source: MediaStreamAudioSourceNode,
+  settings: VoiceEffectsSettings,
+  refs: {
+    robotOsc: React.MutableRefObject<OscillatorNode | null>
+    reverbNode: React.MutableRefObject<ConvolverNode | null>
+    gateNode: React.MutableRefObject<ScriptProcessorNode | null>
+    analyser: React.MutableRefObject<AnalyserNode | null>
+    noiseThresh: React.MutableRefObject<number>
+  }
+): AudioNode {
+  let last: AudioNode = source
+
+  // 1. Noise gate
+  if (settings.noiseGate.enabled) {
+    const gate = ctx.createScriptProcessor(2048, 1, 1)
+    refs.noiseThresh.current = settings.noiseGate.threshold
+    refs.gateNode.current = gate  // Keep reference to prevent GC
+    gate.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0)
+      const output = e.outputBuffer.getChannelData(0)
+      let sum = 0
+      for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
+      const rms = Math.sqrt(sum / input.length)
+      output.set(rms > refs.noiseThresh.current ? input : new Float32Array(input.length))
+    }
+    last.connect(gate)
+    // Silent drain to ctx.destination ensures onaudioprocess fires
+    const silentGain = ctx.createGain()
+    silentGain.gain.value = 0
+    gate.connect(silentGain)
+    silentGain.connect(ctx.destination)
+    last = gate
+  }
+
+  // 2. Robot — ring modulation
+  if (settings.robot.enabled) {
+    const osc = ctx.createOscillator()
+    osc.frequency.value = settings.robot.frequency
+    const ringGain = ctx.createGain()
+    ringGain.gain.value = 0
+    osc.connect(ringGain.gain)
+    osc.start()
+    refs.robotOsc.current = osc
+    last.connect(ringGain)
+    last = ringGain
+  }
+
+  // 3. Telephone — highpass 300Hz → lowpass 3400Hz
+  if (settings.telephone.enabled) {
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 300
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 3400
+    last.connect(hp)
+    hp.connect(lp)
+    last = lp
+  }
+
+  // 4. Reverb
+  if (settings.reverb.enabled) {
+    const conv = ctx.createConvolver()
+    conv.buffer = buildImpulseResponse(ctx, settings.reverb.decay)
+    refs.reverbNode.current = conv
+    last.connect(conv)
+    last = conv
+  }
+
+  // 5. Kid Voice — high-shelf + ring mod
+  if (settings.kidVoice.enabled) {
+    const shelf = ctx.createBiquadFilter()
+    shelf.type = 'highshelf'
+    shelf.frequency.value = 3000
+    shelf.gain.value = settings.kidVoice.gain
+    const kidOsc = ctx.createOscillator()
+    kidOsc.frequency.value = 800
+    const kidGain = ctx.createGain()
+    kidGain.gain.value = 0.5
+    kidOsc.connect(kidGain.gain)
+    kidOsc.start()
+    last.connect(shelf)
+    shelf.connect(kidGain)
+    last = kidGain
+  }
+
+  // 6. Lady Voice — high-shelf + peaking
+  if (settings.ladyVoice.enabled) {
+    const ladyShelf = ctx.createBiquadFilter()
+    ladyShelf.type = 'highshelf'
+    ladyShelf.frequency.value = 2000
+    ladyShelf.gain.value = settings.ladyVoice.gain
+    const peak = ctx.createBiquadFilter()
+    peak.type = 'peaking'
+    peak.frequency.value = 1800
+    peak.Q.value = 2.0
+    peak.gain.value = 4
+    last.connect(ladyShelf)
+    ladyShelf.connect(peak)
+    last = peak
+  }
+
+  // Add AnalyserNode for real-time level monitoring
+  const analyser = ctx.createAnalyser()
+  analyser.fftSize = 256
+  analyser.smoothingTimeConstant = 0.5
+  last.connect(analyser)
+  refs.analyser.current = analyser
+
+  return analyser
 }
 
 // ─── Device Picker (dual-mode) ────────────────────────────────────────────────
@@ -214,7 +353,7 @@ function MicPicker({ devices, selectedId, onSelect }: MicPickerProps) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'sounds' | 'groups' | 'settings'
+type Tab = 'sounds' | 'groups' | 'settings' | 'voiceEffects'
 
 export default function App() {
   const { t } = useTranslation()
@@ -248,6 +387,21 @@ export default function App() {
   const micStreamRef = useRef<MediaStream | null>(null)
   const micAudioRef = useRef<HTMLAudioElement | null>(null)
 
+  // ── Voice Effects state ──
+  const [voiceEffects, setVoiceEffects] = useState<VoiceEffectsSettings>(() => {
+    const saved = localStorage.getItem('sdb_voiceFx')
+    return saved ? JSON.parse(saved) : {
+      enabled: false,
+      testMode: false,
+      noiseGate: { enabled: false, threshold: 0.02 },
+      robot: { enabled: false, frequency: 30 },
+      telephone: { enabled: false },
+      reverb: { enabled: false, decay: 2.0 },
+      kidVoice: { enabled: false, gain: 8 },
+      ladyVoice: { enabled: false, gain: 5 },
+    }
+  })
+
   // ── Persistence ──
   useEffect(() => { if (cableInputDeviceId) localStorage.setItem('sdb_cableInput', cableInputDeviceId) }, [cableInputDeviceId])
   useEffect(() => { if (monitorDeviceId) localStorage.setItem('sdb_monitor', monitorDeviceId) }, [monitorDeviceId])
@@ -257,6 +411,7 @@ export default function App() {
   }, [micDeviceId])
   useEffect(() => { localStorage.setItem('sdb_volVirtual', virtualVolume.toString()) }, [virtualVolume])
   useEffect(() => { localStorage.setItem('sdb_volMonitor', monitorVolume.toString()) }, [monitorVolume])
+  useEffect(() => { localStorage.setItem('sdb_voiceFx', JSON.stringify(voiceEffects)) }, [voiceEffects])
 
   // ── VB-Cable state ──
   const [showVBCableSetup, setShowVBCableSetup] = useState(false)
@@ -285,6 +440,17 @@ export default function App() {
   const [capturedStopKeys, setCapturedStopKeys] = useState<string[]>([])
 
   const stopCurrentRef = useRef<(() => void) | null>(null)
+
+  // ── Voice Effects refs ──
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const fxDestRef = useRef<MediaStreamAudioDestinationNode | null>(null)
+  const fxCableAudioRef = useRef<HTMLAudioElement | null>(null)
+  const fxMonitorAudioRef = useRef<HTMLAudioElement | null>(null)
+  const robotOscRef = useRef<OscillatorNode | null>(null)
+  const reverbNodeRef = useRef<ConvolverNode | null>(null)
+  const gateNodeRef = useRef<ScriptProcessorNode | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const noiseThreshRef = useRef<number>(0.02)
 
   // ── Playback progress tracking ──
   const [playbackProgress, setPlaybackProgress] = useState<number>(0)
@@ -421,12 +587,11 @@ export default function App() {
 
   // ── Mic passthrough engine ──
   // Captures user's real mic and routes it to CABLE Input so others hear voice + sounds.
-  // Only routes to CABLE Input — NOT to monitor speakers — to avoid feedback loops.
+  // With effects enabled, routes through Web Audio API for processing.
   useEffect(() => {
     let cancelled = false
 
     async function startPassthrough() {
-      // Stop any existing passthrough first
       stopMicPassthrough()
 
       if (!micDeviceId || !cableInputDeviceId) {
@@ -442,35 +607,112 @@ export default function App() {
         console.log('[Mic Passthrough] Stream acquired, tracks:', stream.getAudioTracks().length)
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
 
-        // Route mic stream to CABLE Input via HTMLAudioElement + setSinkId
-        // Keep muted so user doesn't hear their own voice (only the sounds playing)
-        const audio = new Audio()
-        audio.srcObject = stream
+        if (!voiceEffects.enabled) {
+          // ── Branch A: Direct passthrough (no effects) ──
+          const audio = new Audio()
+          audio.srcObject = stream
 
-        let setSinkSuccess = false
-        try {
-          const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
-          if (setSink) {
-            await setSink.call(audio, cableInputDeviceId)
-            setSinkSuccess = true
-            console.log('[Mic Passthrough] setSinkId succeeded:', cableInputDeviceId)
+          let setSinkSuccess = false
+          try {
+            const setSink = (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
+            if (setSink) {
+              await setSink.call(audio, cableInputDeviceId)
+              setSinkSuccess = true
+              console.log('[Mic Passthrough] setSinkId succeeded:', cableInputDeviceId)
+            }
+          } catch (err) {
+            console.warn('[Mic Passthrough] setSinkId failed:', err)
           }
-        } catch (err) {
-          console.warn('[Mic Passthrough] setSinkId failed:', err)
+
+          if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+
+          if (setSinkSuccess) {
+            await new Promise(resolve => setTimeout(resolve, 50))
+          }
+
+          await audio.play()
+          micStreamRef.current = stream
+          micAudioRef.current = audio
+          setMicPassthroughActive(true)
+          console.log('[Mic Passthrough] Active: direct path (no effects)')
+        } else {
+          // ── Branch B: Effects processing via AudioContext ──
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+          audioCtxRef.current = ctx
+
+          const source = ctx.createMediaStreamSource(stream)
+          const lastNode = buildEffectChain(ctx, source, voiceEffects, {
+            robotOsc: robotOscRef,
+            reverbNode: reverbNodeRef,
+            gateNode: gateNodeRef,
+            analyser: analyserRef,
+            noiseThresh: noiseThreshRef,
+          })
+          const dest = ctx.createMediaStreamDestination()
+          fxDestRef.current = dest
+          lastNode.connect(dest)
+
+          // CABLE output
+          const cableAudio = new Audio()
+          cableAudio.srcObject = dest.stream
+          cableAudio.volume = 1.0
+
+          try {
+            const setSink = (cableAudio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
+            if (setSink) {
+              await setSink.call(cableAudio, cableInputDeviceId)
+              console.log('[Mic Passthrough] (effects) setSinkId succeeded for CABLE')
+            }
+          } catch (err) {
+            console.warn('[Mic Passthrough] (effects) setSinkId failed for CABLE:', err)
+          }
+
+          if (cancelled) {
+            stream.getTracks().forEach(t => t.stop())
+            ctx.close()
+            return
+          }
+
+          await cableAudio.play()
+          fxCableAudioRef.current = cableAudio
+
+          // Test mode monitor output
+          if (voiceEffects.testMode) {
+            console.log('[Mic Passthrough] Test mode active, monitorDeviceId:', monitorDeviceId, 'dest.stream:', !!dest.stream)
+            const monitorAudio = new Audio()
+            monitorAudio.srcObject = dest.stream
+            monitorAudio.volume = virtualVolume
+            console.log('[Mic Passthrough] Test mode audio element created with volume:', virtualVolume)
+
+            if (monitorDeviceId) {
+              try {
+                const setSink = (monitorAudio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId
+                if (setSink) {
+                  await setSink.call(monitorAudio, monitorDeviceId)
+                  console.log('[Mic Passthrough] setSinkId succeeded for monitor device:', monitorDeviceId)
+                } else {
+                  console.warn('[Mic Passthrough] setSinkId not available, audio will play through default device')
+                }
+              } catch (err) {
+                console.warn('[Mic Passthrough] setSinkId failed, falling back to default device:', err)
+              }
+            } else {
+              console.warn('[Mic Passthrough] No monitorDeviceId set, using default device')
+            }
+
+            try {
+              await monitorAudio.play()
+              fxMonitorAudioRef.current = monitorAudio
+              console.log('[Mic Passthrough] Test mode audio started playing')
+            } catch (err) {
+              console.error('[Mic Passthrough] Failed to play test mode audio:', err)
+            }
+          }
+
+          micStreamRef.current = stream
+          setMicPassthroughActive(true)
+          console.log('[Mic Passthrough] Active: effects enabled, echoCancellation=true')
         }
-
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
-
-        // Ensure device is ready before playing (small delay if setSinkId worked)
-        if (setSinkSuccess) {
-          await new Promise(resolve => setTimeout(resolve, 50))
-        }
-
-        await audio.play()
-        micStreamRef.current = stream
-        micAudioRef.current = audio
-        setMicPassthroughActive(true)
-        console.log('[Mic Passthrough] Active: echoCancellation=true, muted=true, outlet=CABLE Input')
       } catch (err) {
         console.error('[Mic Passthrough] Failed:', err)
         setMicPassthroughActive(false)
@@ -479,20 +721,71 @@ export default function App() {
 
     startPassthrough()
     return () => { cancelled = true; stopMicPassthrough() }
-  }, [micDeviceId, cableInputDeviceId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [micDeviceId, cableInputDeviceId, voiceEffects.enabled, voiceEffects.testMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function stopMicPassthrough() {
+    // Stop direct path audio elements
     if (micAudioRef.current) {
       micAudioRef.current.pause()
       micAudioRef.current.srcObject = null
       micAudioRef.current = null
     }
+
+    // Stop effects path audio elements
+    if (fxCableAudioRef.current) {
+      fxCableAudioRef.current.pause()
+      fxCableAudioRef.current.srcObject = null
+      fxCableAudioRef.current = null
+    }
+    if (fxMonitorAudioRef.current) {
+      fxMonitorAudioRef.current.pause()
+      fxMonitorAudioRef.current.srcObject = null
+      fxMonitorAudioRef.current = null
+    }
+
+    // Close AudioContext
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close()
+      audioCtxRef.current = null
+    }
+
+    // Stop stream
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(t => t.stop())
       micStreamRef.current = null
     }
+
+    // Reset effect node refs
+    robotOscRef.current = null
+    reverbNodeRef.current = null
+    gateNodeRef.current = null
+    analyserRef.current = null
+
     setMicPassthroughActive(false)
   }
+
+  // ── Voice Effects: Live parameter updates ──
+  useEffect(() => {
+    if (robotOscRef.current) {
+      robotOscRef.current.frequency.value = voiceEffects.robot.frequency
+    }
+  }, [voiceEffects.robot.frequency])
+
+  useEffect(() => {
+    if (reverbNodeRef.current && audioCtxRef.current) {
+      reverbNodeRef.current.buffer = buildImpulseResponse(audioCtxRef.current, voiceEffects.reverb.decay)
+    }
+  }, [voiceEffects.reverb.decay])
+
+  useEffect(() => {
+    noiseThreshRef.current = voiceEffects.noiseGate.threshold
+  }, [voiceEffects.noiseGate.threshold])
+
+  useEffect(() => {
+    if (fxMonitorAudioRef.current) {
+      fxMonitorAudioRef.current.volume = virtualVolume
+    }
+  }, [virtualVolume])
 
   // ── Ctrl+Shift+D debug panel toggle ──
   useEffect(() => {
@@ -744,6 +1037,12 @@ export default function App() {
                 onClick={() => setTab('settings')}
               >
                 <Settings size={13} /> {t('tab.settings')}
+              </button>
+              <button
+                className={`tab-btn ${tab === 'voiceEffects' ? 'active' : ''}`}
+                onClick={() => setTab('voiceEffects')}
+              >
+                <Mic size={13} /> {t('tab.voiceEffects')}
               </button>
             </div>
 
@@ -1015,6 +1314,16 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {loaded && tab === 'voiceEffects' && (
+          <VoiceEffectsPage
+            voiceEffects={voiceEffects}
+            onUpdate={setVoiceEffects}
+            micPassthroughActive={micPassthroughActive}
+            micDeviceId={micDeviceId}
+            analyserRef={analyserRef}
+          />
         )}
       </main>
 
