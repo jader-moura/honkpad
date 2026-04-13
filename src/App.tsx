@@ -15,7 +15,7 @@ import { ImportModal } from './components/ImportModal'
 import { SoundGroup, VBCableStatus, ConflictInfo } from './types/global'
 import {
   Minus, Square, X, Music2, FolderOpen,
-  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings, Search, StopCircle, Keyboard
+  Volume2, ChevronDown, Plus, Layers, Cable, Monitor, Mic, MicOff, Settings, Search, StopCircle, Keyboard, RefreshCw, Download
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -343,8 +343,11 @@ export default function App() {
   useEffect(() => {
     async function loadDevices() {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => { })
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
+          console.warn('[Audio] getUserMedia permission check failed:', err?.message)
+        })
         const all = await navigator.mediaDevices.enumerateDevices()
+        console.log('[Audio] Device enumeration — Total:', all.length, '| Audio output:', all.filter(d => d.kind === 'audiooutput').length, '| Audio input:', all.filter(d => d.kind === 'audioinput').length)
 
         // Output devices
         const outputDevices = all.filter(d => d.kind === 'audiooutput').map(d => ({
@@ -353,6 +356,7 @@ export default function App() {
           isCableInput: isCableInputDevice(d.label),
         }))
         setOutputs(outputDevices)
+        outputDevices.forEach(d => console.log('[Audio Output]', d.label, d.isCableInput ? '(CABLE)' : ''))
 
         // Input devices (mics) — exclude CABLE Output (it's not a real mic)
         const inputDevices = all
@@ -363,17 +367,44 @@ export default function App() {
             label: d.label || `Microfone (${d.deviceId.slice(0, 8)}…)`,
           }))
         setInputs(inputDevices)
+        inputDevices.forEach(d => console.log('[Audio Input]', d.label))
 
-        // Auto-detect CABLE Input if not already set
-        if (!cableInputDeviceId) {
+        // Validate stored CABLE Input — if stale, clear and re-detect
+        const currentCable = cableInputDeviceId
+        if (currentCable && !outputDevices.find(d => d.deviceId === currentCable)) {
+          console.log('[Audio] Stored CABLE Input device no longer available, re-detecting…')
+          setCableInputDeviceId(null)
+          localStorage.removeItem('sdb_cableInput')
+        }
+
+        // Validate stored monitor — if stale, clear and re-detect
+        const currentMonitor = monitorDeviceId
+        if (currentMonitor && !outputDevices.find(d => d.deviceId === currentMonitor)) {
+          console.log('[Audio] Stored monitor device no longer available, re-detecting…')
+          setMonitorDeviceId(null)
+          localStorage.removeItem('sdb_monitor')
+        }
+
+        // Validate stored mic — if stale, clear
+        const currentMic = micDeviceId
+        if (currentMic && !inputDevices.find(d => d.deviceId === currentMic)) {
+          console.log('[Audio] Stored mic device no longer available, clearing…')
+          setMicDeviceId(null)
+          localStorage.removeItem('sdb_mic')
+        }
+
+        // Auto-detect CABLE Input if not set or was just cleared
+        const effectiveCable = (currentCable && outputDevices.find(d => d.deviceId === currentCable)) ? currentCable : null
+        if (!effectiveCable) {
           const cable = outputDevices.find(d => d.isCableInput)
           if (cable) {
             setCableInputDeviceId(cable.deviceId)
           }
         }
 
-        // Auto-detect monitor output (first non-CABLE, non-default device)
-        if (!monitorDeviceId) {
+        // Auto-detect monitor output if not set or was just cleared
+        const effectiveMonitor = (currentMonitor && outputDevices.find(d => d.deviceId === currentMonitor)) ? currentMonitor : null
+        if (!effectiveMonitor) {
           const monitor = outputDevices.find(
             d => !d.isCableInput && d.deviceId !== 'default' && d.deviceId !== 'communications'
           )
@@ -404,17 +435,17 @@ export default function App() {
       }
 
       try {
+        console.log('[Mic Passthrough] Requesting stream for device:', micDeviceId)
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: { deviceId: { exact: micDeviceId }, echoCancellation: true, noiseSuppression: false, autoGainControl: false }
         })
+        console.log('[Mic Passthrough] Stream acquired, tracks:', stream.getAudioTracks().length)
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
 
         // Route mic stream to CABLE Input via HTMLAudioElement + setSinkId
         // Keep muted so user doesn't hear their own voice (only the sounds playing)
         const audio = new Audio()
         audio.srcObject = stream
-        audio.muted = true  // critical: prevent user feedback loop
-        audio.volume = 0    // ensure no audio output to monitor
 
         let setSinkSuccess = false
         try {
@@ -881,6 +912,41 @@ export default function App() {
                   <VolumeSlider value={monitorVolume} onChange={setMonitorVolume} label={t('audio.volumeMonitor')} />
                 </div>
               </div>
+
+              <button className="btn-secondary reconfigure-btn" onClick={() => {
+                // Clear all stored device IDs and force re-detection
+                localStorage.removeItem('sdb_cableInput')
+                localStorage.removeItem('sdb_monitor')
+                localStorage.removeItem('sdb_mic')
+                setCableInputDeviceId(null)
+                setMonitorDeviceId(null)
+                setMicDeviceId(null)
+                // Trigger device re-enumeration via devicechange event
+                navigator.mediaDevices.enumerateDevices().then(all => {
+                  const outputDevices = all.filter(d => d.kind === 'audiooutput').map(d => ({
+                    deviceId: d.deviceId,
+                    label: d.label || `Dispositivo (${d.deviceId.slice(0, 8)}…)`,
+                    isCableInput: isCableInputDevice(d.label),
+                  }))
+                  setOutputs(outputDevices)
+                  const inputDevices = all
+                    .filter(d => d.kind === 'audioinput')
+                    .filter(d => !d.label.toLowerCase().includes('cable output'))
+                    .map(d => ({ deviceId: d.deviceId, label: d.label || `Microfone (${d.deviceId.slice(0, 8)}…)` }))
+                  setInputs(inputDevices)
+                  const cable = outputDevices.find(d => d.isCableInput)
+                  if (cable) setCableInputDeviceId(cable.deviceId)
+                  const monitor = outputDevices.find(d => !d.isCableInput && d.deviceId !== 'default' && d.deviceId !== 'communications')
+                  if (monitor) setMonitorDeviceId(monitor.deviceId)
+                  console.log('[Audio] Reconfigured — CABLE:', cable?.label, '| Monitor:', monitor?.label)
+                })
+              }}>
+                <RefreshCw size={14} /> {t('audio.reconfigure')}
+              </button>
+
+              <button className="btn-secondary reconfigure-btn" onClick={() => setShowVBCableSetup(true)}>
+                <Download size={14} /> {t('audio.reinstallVBCable')}
+              </button>
             </div>
 
             {/* Stop All Hotkey Settings */}

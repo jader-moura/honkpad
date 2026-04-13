@@ -75,6 +75,8 @@
   "audio.volumeMonitor": "Volume Monitor",
   "audio.routing": "Roteamento de Áudio",
   "audio.deviceLabel": "Selecionar {{type}}",
+  "audio.reconfigure": "Reconfigurar Dispositivos de Áudio",
+  "audio.reinstallVBCable": "Reinstalar VB-Cable",
   "hotkey.stopAll": "Parar Todos (Hotkey)",
   "hotkey.label": "Atalho para parar todos os sons",
   "hotkey.assigned": "Atribuído",

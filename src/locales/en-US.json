@@ -75,6 +75,8 @@
   "audio.volumeMonitor": "Monitor Volume",
   "audio.routing": "Audio Routing",
   "audio.deviceLabel": "Select {{type}}",
+  "audio.reconfigure": "Reconfigure Audio Devices",
+  "audio.reinstallVBCable": "Reinstall VB-Cable",
   "hotkey.stopAll": "Stop All (Hotkey)",
   "hotkey.label": "Hotkey to stop all sounds",
   "hotkey.assigned": "Assigned",
