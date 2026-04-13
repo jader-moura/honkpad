@@ -676,7 +676,8 @@ export default function App() {
           await cableAudio.play()
           fxCableAudioRef.current = cableAudio
 
-          // Test mode monitor output
+          // Test mode monitor output — temporarily disabled
+          /*
           if (voiceEffects.testMode) {
             console.log('[Mic Passthrough] Test mode active, monitorDeviceId:', monitorDeviceId, 'dest.stream:', !!dest.stream)
             const monitorAudio = new Audio()
@@ -708,6 +709,7 @@ export default function App() {
               console.error('[Mic Passthrough] Failed to play test mode audio:', err)
             }
           }
+          */
 
           micStreamRef.current = stream
           setMicPassthroughActive(true)
@@ -721,7 +723,7 @@ export default function App() {
 
     startPassthrough()
     return () => { cancelled = true; stopMicPassthrough() }
-  }, [micDeviceId, cableInputDeviceId, voiceEffects.enabled, voiceEffects.testMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [micDeviceId, cableInputDeviceId, voiceEffects.enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function stopMicPassthrough() {
     // Stop direct path audio elements

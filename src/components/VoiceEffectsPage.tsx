@@ -196,6 +196,7 @@ export function VoiceEffectsPage({
 
           {voiceEffects.enabled && (
             <>
+              {/* Test mode temporarily disabled
               {voiceEffects.testMode && (
                 <div
                   style={{
@@ -220,6 +221,7 @@ export function VoiceEffectsPage({
                 checked={voiceEffects.testMode}
                 onChange={(v) => updateSetting('testMode', v)}
               />
+              */}
 
               <div style={{ height: '1px', backgroundColor: '#e0e0e0', margin: '12px 0' }} />
 
